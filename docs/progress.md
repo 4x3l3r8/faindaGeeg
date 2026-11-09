@@ -24,12 +24,12 @@ Living log of implementation status. Newest entries first.
   - `GET /health/db` returns 503 gracefully when Postgres is unavailable (error logged server-side, no stack trace leaked to the client).
   - `GET /docs` serves the OpenAPI UI (200).
 
-### Not yet verified (Docker daemon was not running this session)
+### Verified with Postgres running (2026-11-09)
 
-- Starting the Postgres container via `docker compose up -d db`.
-- Running migrations (Phase 0 has no tables, so little to exercise).
-- `/health/db` returning green against a live database.
-- Web dashboard talking to the API in a browser.
+- `docker compose up -d db` starts the pgvector Postgres container, which reports `healthy`.
+- `pnpm --filter @toi/db db:migrate` is a clean no-op on the empty Phase 0 schema (exits 0, logs "No migrations found") — the migrate runner now tolerates a missing migrations journal instead of throwing.
+- `GET /health/db` returns 200 `{ ok: true }` against the live database (~100 ms ping).
+- The React dashboard (served by `vite dev`) renders, its API-status badge reads "API & DB operational" (cross-origin calls to `/health` and `/health/db` succeed), and client-side routing between sections works.
 
 ### Next milestone
 
