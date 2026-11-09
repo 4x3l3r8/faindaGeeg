@@ -10,7 +10,11 @@ import {
 } from 'fastify-type-provider-zod';
 
 import { env } from './config/env.js';
+import dashboardRoutes from './modules/dashboard/routes.js';
 import healthRoutes from './modules/health/routes.js';
+import leadsRoutes from './modules/leads/routes.js';
+import opportunitiesRoutes from './modules/opportunities/routes.js';
+import skillsRoutes from './modules/skills/routes.js';
 
 const PUBLIC_PATHS = new Set<string>(['/health', '/health/db']);
 
@@ -52,7 +56,13 @@ export async function buildApp() {
         description: 'Tech Opportunity Intelligence System API',
         version: '0.0.0',
       },
-      tags: [{ name: 'health', description: 'Liveness and database readiness probes' }],
+      tags: [
+        { name: 'health', description: 'Liveness and database readiness probes' },
+        { name: 'opportunities', description: 'Opportunity inbox, detail, review, and feedback' },
+        { name: 'leads', description: 'Client lead tracking and outreach activities' },
+        { name: 'skills', description: 'Skills profile management' },
+        { name: 'dashboard', description: 'Aggregated dashboard metrics' },
+      ],
     },
     transform: jsonSchemaTransform,
   });
@@ -90,6 +100,11 @@ export async function buildApp() {
   });
 
   await app.register(healthRoutes);
+
+  await app.register(opportunitiesRoutes, { prefix: '/api' });
+  await app.register(leadsRoutes, { prefix: '/api' });
+  await app.register(skillsRoutes, { prefix: '/api' });
+  await app.register(dashboardRoutes, { prefix: '/api' });
 
   return app;
 }
