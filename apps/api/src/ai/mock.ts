@@ -31,10 +31,27 @@ function extractRequiredSkills(haystack: string): ExtractionResult['requiredSkil
   return matched.map((name) => ({ name, isRequired: true, evidenceExcerpt: null }));
 }
 
-function extractRecordText(user: string): string {
+function extractRecord(user: string): { title: string; content: string } {
   const match = /<<<RECORD\s*([\s\S]*?)\s*RECORD>>>/.exec(user);
-  const body = (match?.[1] ?? user).trim();
-  return body.length > 0 ? body : user.trim();
+  let body = (match?.[1] ?? user).trim();
+  if (body.length === 0) {
+    body = user.trim();
+  }
+
+  let title = '';
+  const titleMatch = /^Title:\s*(.*)$/m.exec(body);
+  if (titleMatch) {
+    title = (titleMatch[1] ?? '').trim();
+    body = body.replace(/^Title:\s*.*$/m, '');
+  }
+  body = body.replace(/^\s*Content:\s*$/m, '');
+
+  return { title, content: body.replace(/\s+/g, ' ').trim() };
+}
+
+function firstSentence(text: string): string {
+  const match = /^(.+?[.!?])(?:\s|$)/.exec(text);
+  return match ? (match[1] ?? '').trim() : '';
 }
 
 function firstExcerpt(text: string): string {
@@ -47,8 +64,8 @@ function firstExcerpt(text: string): string {
 
 export class MockProvider implements AiProvider {
   async generateJson(args: GenerateJsonArgs): Promise<string> {
-    const recordText = extractRecordText(args.user);
-    const haystack = args.user.toLowerCase();
+    const { title: parsedTitle, content } = extractRecord(args.user);
+    const haystack = `${parsedTitle} ${content}`.toLowerCase();
 
     let classification: ExtractionResult['classification'];
     let buyingIntent: ExtractionResult['buyingIntent'];
@@ -64,14 +81,21 @@ export class MockProvider implements AiProvider {
       buyingIntent = 'unknown';
     }
 
-    const excerpt = firstExcerpt(recordText);
-    const title = excerpt.length > 0 ? excerpt.slice(0, 120) : 'Untitled opportunity';
+    const excerpt = firstExcerpt(content);
+    const title = (
+      parsedTitle.length > 0
+        ? parsedTitle
+        : firstSentence(content).length > 0
+          ? firstSentence(content)
+          : content.slice(0, 80)
+    ).slice(0, 100);
+    const finalTitle = title.length > 0 ? title : 'Untitled opportunity';
 
     const result: ExtractionResult = {
       classification,
       isRelevant: classification !== 'irrelevant',
-      title,
-      problemSummary: classification === 'irrelevant' ? '' : excerpt,
+      title: finalTitle,
+      problemSummary: classification === 'irrelevant' ? '' : content.slice(0, 240),
       targetCustomer: null,
       requiredSkills: extractRequiredSkills(haystack),
       buyingIntent,
