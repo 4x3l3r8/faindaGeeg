@@ -1,0 +1,212 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import {
+  addLeadActivity,
+  createLead,
+  createSkill,
+  getDashboardSummary,
+  getLead,
+  getOpportunity,
+  listLeads,
+  listOpportunities,
+  listSkills,
+  patchLead,
+  patchOpportunityStatus,
+  patchSkill,
+  postFeedback,
+  submitOpportunity,
+} from './api';
+import type {
+  ActivityInput,
+  CreateLeadInput,
+  Feedback,
+  FeedbackInput,
+  Lead,
+  LeadActivity,
+  LeadPatchInput,
+  ListOpportunitiesParams,
+  OpportunityStatus,
+  SkillInput,
+  SkillPatchInput,
+  SubmitInput,
+} from './types';
+
+/**
+ * Central query-key factory. Every key is built from these helpers so that
+ * mutations can invalidate the right cache slices without string duplication.
+ */
+export const queryKeys = {
+  dashboard: () => ['dashboard'] as const,
+  opportunities: {
+    all: () => ['opportunities'] as const,
+    list: (params?: ListOpportunitiesParams) => ['opportunities', 'list', params ?? {}] as const,
+    detail: (id: string) => ['opportunities', 'detail', id] as const,
+  },
+  leads: {
+    all: () => ['leads'] as const,
+    list: (status?: OpportunityStatus) => ['leads', 'list', status ?? null] as const,
+    detail: (id: string) => ['leads', 'detail', id] as const,
+  },
+  skills: {
+    all: () => ['skills'] as const,
+    list: () => ['skills', 'list'] as const,
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: queryKeys.dashboard(),
+    queryFn: getDashboardSummary,
+  });
+}
+
+export function useOpportunities(params: ListOpportunitiesParams = {}) {
+  return useQuery({
+    queryKey: queryKeys.opportunities.list(params),
+    queryFn: () => listOpportunities(params),
+  });
+}
+
+export function useOpportunity(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.opportunities.detail(id ?? ''),
+    queryFn: () => getOpportunity(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useLeads(status?: OpportunityStatus) {
+  return useQuery({
+    queryKey: queryKeys.leads.list(status),
+    queryFn: () => listLeads(status),
+  });
+}
+
+export function useLead(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.leads.detail(id ?? ''),
+    queryFn: () => getLead(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useSkills() {
+  return useQuery({
+    queryKey: queryKeys.skills.list(),
+    queryFn: listSkills,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export function useSubmit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SubmitInput) => submitOpportunity(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+export function useSetOpportunityStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { id: string; status: OpportunityStatus }) =>
+      patchOpportunityStatus(variables.id, variables.status),
+    onSuccess: (
+      _data: { id: string; status: OpportunityStatus },
+      variables: { id: string; status: OpportunityStatus },
+    ) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all() });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.opportunities.detail(variables.id),
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+export function useSendFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { id: string; input: FeedbackInput }) =>
+      postFeedback(variables.id, variables.input),
+    onSuccess: (_data: Feedback, variables: { id: string; input: FeedbackInput }) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.opportunities.detail(variables.id),
+      });
+    },
+  });
+}
+
+export function useCreateLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateLeadInput) => createLead(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leads.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+export function usePatchLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { id: string; patch: LeadPatchInput }) =>
+      patchLead(variables.id, variables.patch),
+    onSuccess: (_data: Lead, variables: { id: string; patch: LeadPatchInput }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leads.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leads.detail(variables.id) });
+    },
+  });
+}
+
+export function useAddActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { id: string; input: ActivityInput }) =>
+      addLeadActivity(variables.id, variables.input),
+    onSuccess: (_data: LeadActivity, variables: { id: string; input: ActivityInput }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leads.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leads.all() });
+    },
+  });
+}
+
+export function useCreateSkill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SkillInput) => createSkill(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.skills.all() });
+    },
+  });
+}
+
+export function usePatchSkill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: { id: string; patch: SkillPatchInput }) =>
+      patchSkill(variables.id, variables.patch),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.skills.all() });
+    },
+  });
+}
