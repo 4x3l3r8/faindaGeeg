@@ -4,6 +4,33 @@ import type { AiProvider, GenerateJsonArgs } from './provider.js';
 const GIG_PATTERN = /hire|looking for a developer|freelanc/i;
 const PROBLEM_PATTERN = /bug|slow|manual|spreadsheet/i;
 
+const SKILL_KEYWORDS: ReadonlyArray<readonly [readonly string[], string]> = [
+  [['react'], 'React'],
+  [['next.js', 'nextjs'], 'Next.js'],
+  [['node'], 'Node.js'],
+  [['typescript', ' ts '], 'TypeScript'],
+  [['api', 'integration'], 'API integration'],
+  [['rest'], 'REST API development'],
+  [['postgres', 'postgresql'], 'PostgreSQL'],
+  [['mysql'], 'MySQL'],
+  [['sql server', 'mssql'], 'Microsoft SQL Server'],
+  [['mongo'], 'MongoDB'],
+  [['c#', 'asp.net', '.net'], 'ASP.NET'],
+  [['automat', 'spreadsheet', 'manual'], 'Business process automation'],
+  [['ai', 'llm', 'machine learning'], 'AI application development'],
+  [['dashboard', 'web app', 'frontend'], 'Frontend architecture'],
+];
+
+function extractRequiredSkills(haystack: string): ExtractionResult['requiredSkills'] {
+  const matched: string[] = [];
+  for (const [needles, name] of SKILL_KEYWORDS) {
+    if (needles.some((needle) => haystack.includes(needle)) && !matched.includes(name)) {
+      matched.push(name);
+    }
+  }
+  return matched.map((name) => ({ name, isRequired: true, evidenceExcerpt: null }));
+}
+
 function extractRecordText(user: string): string {
   const match = /<<<RECORD\s*([\s\S]*?)\s*RECORD>>>/.exec(user);
   const body = (match?.[1] ?? user).trim();
@@ -46,7 +73,7 @@ export class MockProvider implements AiProvider {
       title,
       problemSummary: classification === 'irrelevant' ? '' : excerpt,
       targetCustomer: null,
-      requiredSkills: [],
+      requiredSkills: extractRequiredSkills(haystack),
       buyingIntent,
       urgency: null,
       engagementType: 'unknown',
