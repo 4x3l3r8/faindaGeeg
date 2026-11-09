@@ -17,6 +17,7 @@
     "@fastify/swagger": "^9.0.0",
     "@fastify/swagger-ui": "^5.0.0",
     "@toi/db": "workspace:*",
+    "drizzle-orm": "^0.38.0",
     "dotenv": "^16.4.0",
     "fastify": "^5.0.0",
     "fastify-type-provider-zod": "^4.0.0",
