@@ -1,0 +1,23 @@
+name: faindageeg
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: faindageeg-db
+    environment:
+      POSTGRES_USER: faindageeg
+      POSTGRES_PASSWORD: faindageeg
+      POSTGRES_DB: faindageeg
+    ports:
+      - '5432:5432'
+    volumes:
+      - faindageeg-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U faindageeg -d faindageeg']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  faindageeg-db-data:

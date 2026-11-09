@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+node_modules/.tmp
+apps/web/vite.config.d.ts
+
+# Environment (keep .env.example tracked)
+.env
+.env.local
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Testing
+coverage/
+
+# Turborepo
+.turbo/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
