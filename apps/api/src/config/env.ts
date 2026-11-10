@@ -19,12 +19,21 @@ const optionalPositiveInt = z.preprocess(
   z.coerce.number().int().positive().optional(),
 );
 
+const booleanDefaultTrue = z.preprocess((value) => {
+  if (value === undefined) {
+    return true;
+  }
+  const normalized = String(value).toLowerCase();
+  return !(normalized === 'false' || normalized === '0');
+}, z.boolean());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_HOST: z.string().min(1).default('0.0.0.0'),
   API_PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.string().min(1).default('info'),
   DATABASE_URL: z.string().url(),
+  DB_AUTO_MIGRATE: booleanDefaultTrue,
   API_AUTH_TOKEN: optionalString,
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: optionalString,

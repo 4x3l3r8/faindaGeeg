@@ -1,7 +1,20 @@
+import { runMigrations } from '@toi/db';
+
 import { buildApp } from './app.js';
 import { env } from './config/env.js';
 
 async function main(): Promise<void> {
+  if (env.DB_AUTO_MIGRATE) {
+    console.log('Running database migrations…');
+    try {
+      await runMigrations();
+      console.log('Database migrations complete.');
+    } catch (error) {
+      console.error('Database migration failed:', error);
+      process.exit(1);
+    }
+  }
+
   const app = await buildApp();
 
   try {
