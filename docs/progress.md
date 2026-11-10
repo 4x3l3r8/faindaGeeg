@@ -2,6 +2,29 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Phase 4 — problem intelligence completed
+
+### Completed
+
+- **Schema.** Added `opportunities.embedding` (vector(256)) and three tables: `problem_clusters` (normalized `centroid` vector(256), member/demand/independent-source metrics, and a validation status), `cluster_members`, and `service_ideas`. Migration `0002_faithful_namor` enables the pgvector extension (`CREATE EXTENSION IF NOT EXISTS vector`).
+- **Embeddings (`ai/embeddings.ts`).** A provider-independent 256-dimension layer: a deterministic `LocalEmbedder` (default, no key) and an optional `OpenAIEmbedder` (`text-embedding-3-small`, `dimensions: 256`), selected by env — `EMBEDDINGS_PROVIDER=openai` with `OPENAI_API_KEY` uses OpenAI, otherwise local.
+- **Clustering (`modules/clusters`).** In-process `runClustering`: batch-embed opportunities missing an embedding, then greedily assign each unclustered opportunity to its nearest cluster via pgvector cosine distance (similarity threshold default 0.45), creating a new cluster otherwise. The centroid is recomputed as the normalized mean of member embeddings, and metrics are recomputed (`member_count`, distinct-author `independent_source_count`, `demand_score`, first/last observed timestamps).
+- **Service ideas (`ai/service-ideas.ts`).** An AI generator that turns a cluster into one draft service (summary, target customer, suggested service, required skills, engagement model, validation questions, next action). Zod-validated behind a v1 injection-safe prompt that treats evidence as untrusted data, stays grounded, and never claims proven demand. A mock path keeps it working offline.
+- **REST.** `GET /api/problem-clusters`, `GET /api/problem-clusters/:id`, `POST /api/problem-clusters/rebuild`, `POST /api/problem-clusters/:id/service-ideas`, `GET /api/service-ideas`.
+- **UI.** A **Problem Intelligence** page (rebuild trigger, cluster list with demand/independent-source counts, and a detail view with evidence, members, and potential services) and a **Service Ideas** page.
+- **Fixes made this phase.** Source records now persist `authorKey` + `publishedAt`, which feed independent-source counts and freshness scoring.
+
+### Verified (2026-11-10)
+
+- A live run ingested 20 Hacker News records and clustered them into groups (top cluster: 12 members / 12 independent authors / demand 100).
+- Service-idea generation and persistence were verified, and the UI was verified in the browser.
+- 49 Vitest tests pass, including 16 new tests.
+- With the local embedder, clustering quality is approximate; OpenAI embeddings improve it.
+
+### Next milestone
+
+Phase 5: optimisation (scoring calibration from feedback/outcomes, source performance, better ranking, notifications, analytics).
+
 ## 2026-11-10 — Phase 3 — lead management (outreach drafts + daily digest) completed
 
 ### Completed

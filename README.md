@@ -63,7 +63,8 @@ Copy `env.example` to `.env`. Key variables:
 - `WEB_PORT`, `VITE_API_BASE_URL` — web dev server and API base URL.
 - `AI_PROVIDER` — `openrouter` (default) or `mock`.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` — required when `AI_PROVIDER=openrouter`. Set `AI_PROVIDER=mock` (or leave the key blank) to run fully offline with a deterministic mock extractor — handy for dev and demos, no API cost.
-- `EMBEDDINGS_PROVIDER` — reserved for Phase 4 (semantic clustering); not used yet.
+- `EMBEDDINGS_PROVIDER` — embeddings backend for problem clustering. Blank (default) or `local` uses the built-in deterministic local embedder (no key, fully offline). Set to `openai` **and** provide `OPENAI_API_KEY` to use OpenAI `text-embedding-3-small` (256 dimensions) for higher-quality embeddings.
+- `OPENAI_API_KEY` — required only when `EMBEDDINGS_PROVIDER=openai`.
 
 ## Submitting an opportunity
 
@@ -99,6 +100,20 @@ To enable **Reddit**, register an app at https://www.reddit.com/prefs/apps (scri
 
 The connector uses the official OAuth application-only flow (`client_credentials`, read-only). Credentials are read from the environment only and are never stored in source config.
 
+## Problem intelligence
+
+After ingesting, build clusters of recurring problems from the **Problem Intelligence** page or via the API:
+
+```bash
+curl -X POST http://localhost:3001/api/problem-clusters/rebuild \
+  -H 'content-type: application/json' \
+  -d '{"similarityThreshold":0.45}'
+```
+
+Clusters group recurring problems and expose an independent-source count and a demand score. Open a cluster to see its evidence and members, then generate a draft service idea from it (`POST /api/problem-clusters/:id/service-ideas`). Service ideas are grounded hypotheses drawn from the evidence — drafts to validate, never proven demand.
+
+Embeddings default to the built-in local embedder (no key). For higher-quality semantic clustering, set `EMBEDDINGS_PROVIDER=openai` and `OPENAI_API_KEY` in `.env` to use OpenAI `text-embedding-3-small` (256 dimensions).
+
 ## API endpoints
 
 All under `/api` (see `/docs` for the OpenAPI spec):
@@ -115,6 +130,11 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET/POST /ingestion/runs` — list recent runs / trigger a run (`{ sourceName?, maxRecords? }`).
 - `GET /sources` — list configured ingestion sources.
 - `GET /ingestion/connectors` — list available connectors.
+- `GET /problem-clusters` — list problem clusters by demand score.
+- `GET /problem-clusters/:id` — cluster detail with evidence, members, and service ideas.
+- `POST /problem-clusters/rebuild` — run an in-process clustering pass (`{ similarityThreshold? }`).
+- `POST /problem-clusters/:id/service-ideas` — generate and save a draft service idea from a cluster.
+- `GET /service-ideas` — list generated service ideas.
 
 Outreach is draft-only and human-approved: the system suggests an editable message and never contacts anyone.
 
