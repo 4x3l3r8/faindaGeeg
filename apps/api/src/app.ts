@@ -10,6 +10,7 @@ import {
 } from 'fastify-type-provider-zod';
 
 import { env } from './config/env.js';
+import clusterRoutes from './modules/clusters/routes.js';
 import dashboardRoutes from './modules/dashboard/routes.js';
 import healthRoutes from './modules/health/routes.js';
 import ingestionRoutes from './modules/ingestion/routes.js';
@@ -65,6 +66,10 @@ export async function buildApp() {
         { name: 'dashboard', description: 'Aggregated dashboard metrics' },
         { name: 'ingestion', description: 'Ingestion runs and source connectors' },
         { name: 'sources', description: 'Configured ingestion sources' },
+        {
+          name: 'clusters',
+          description: 'Problem clusters and generated service ideas',
+        },
       ],
     },
     transform: jsonSchemaTransform,
@@ -109,6 +114,7 @@ export async function buildApp() {
   await app.register(skillsRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
   await app.register(ingestionRoutes, { prefix: '/api' });
+  await app.register(clusterRoutes, { prefix: '/api' });
 
   return app;
 }
