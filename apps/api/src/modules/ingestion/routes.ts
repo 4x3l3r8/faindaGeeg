@@ -2,7 +2,9 @@ import type { FastifyPluginAsync } from 'fastify';
 import { type ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
+import { env } from '../../config/env.js';
 import { listConnectorNames } from './connectors/index.js';
+import { acceptInbound, inboundBodySchema, normalizeInboundBody } from './inbound.js';
 import { listRuns, listSources, type ListRunsParams } from './repository.js';
 import { startIngestion } from './run.js';
 
@@ -107,6 +109,42 @@ const ingestionRoutes: FastifyPluginAsync = async (app) => {
     },
     async () => {
       return { data: listConnectorNames() };
+    },
+  );
+
+  server.post(
+    '/ingestion/inbound',
+    {
+      schema: {
+        tags: ['ingestion'],
+        summary: 'Accept inbound webhook records',
+        description:
+          'Accepts externally pushed source records authenticated with the shared webhook secret header. Records are persisted and queued for processing.',
+        body: inboundBodySchema,
+        response: {
+          202: dataResponse,
+          401: errorResponse,
+          503: errorResponse,
+        },
+      },
+    },
+    async (request, reply) => {
+      const expectedSecret = env.INGEST_WEBHOOK_SECRET;
+      if (expectedSecret === undefined || expectedSecret === '') {
+        return reply
+          .status(503)
+          .send({ error: { message: 'Inbound ingestion is disabled', statusCode: 503 } });
+      }
+
+      if (request.headers['x-webhook-secret'] !== expectedSecret) {
+        return reply
+          .status(401)
+          .send({ error: { message: 'Invalid webhook secret', statusCode: 401 } });
+      }
+
+      const records = normalizeInboundBody(request.body);
+      const summary = await acceptInbound(records);
+      return reply.status(202).send({ data: summary });
     },
   );
 };

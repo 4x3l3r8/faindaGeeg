@@ -18,7 +18,7 @@ import leadsRoutes from './modules/leads/routes.js';
 import opportunitiesRoutes from './modules/opportunities/routes.js';
 import skillsRoutes from './modules/skills/routes.js';
 
-const PUBLIC_PATHS = new Set<string>(['/health', '/health/db']);
+const PUBLIC_PATHS = new Set<string>(['/health', '/health/db', '/api/ingestion/inbound']);
 
 function isPublicRoute(url: string): boolean {
   const path = url.split('?')[0] ?? url;
