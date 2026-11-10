@@ -1,4 +1,6 @@
 import type { ExtractionResult } from '../shared/index.js';
+import type { ServiceIdeaResult } from './service-ideas.js';
+import { SERVICE_IDEA_TASK_MARKER } from './service-ideas.js';
 import type { AiProvider, GenerateJsonArgs, GenerateTextArgs } from './provider.js';
 
 const GIG_PATTERN = /hire|looking for a developer|freelanc/i;
@@ -68,8 +70,48 @@ function readLabeledField(user: string, label: string): string {
   return match ? (match[1] ?? '').trim() : '';
 }
 
+function deriveServiceSkills(haystack: string): string[] {
+  const matched: string[] = [];
+  for (const [needles, name] of SKILL_KEYWORDS) {
+    if (needles.some((needle) => haystack.includes(needle)) && !matched.includes(name)) {
+      matched.push(name);
+    }
+  }
+  return matched.length > 0 ? matched : ['TypeScript', 'Node.js'];
+}
+
+function buildMockServiceIdea(user: string): ServiceIdeaResult {
+  const clusterTitle = readLabeledField(user, 'Title');
+  const titleText = clusterTitle.length > 0 ? clusterTitle : 'recurring problem';
+  const haystack = user.toLowerCase();
+
+  return {
+    title: `Service for: ${titleText.slice(0, 60)}`,
+    summary:
+      'A candidate software service addressing this recurring problem, grounded only in the provided evidence. This is a draft hypothesis, not verified market demand.',
+    targetCustomer: null,
+    suggestedService:
+      'A focused web application with integrations and automation to remove the manual work described in the cluster.',
+    requiredSkills: deriveServiceSkills(haystack),
+    engagementModel: 'FixedProject',
+    validationQuestions: [
+      'How often does this problem occur for the affected users today?',
+      'What are they currently doing to work around it, and what does that cost them?',
+      'Would they pay for a purpose-built tool, and who controls that budget?',
+    ],
+    nextAction: 'Interview three people who described this problem.',
+  };
+}
+
 export class MockProvider implements AiProvider {
   async generateJson(args: GenerateJsonArgs): Promise<string> {
+    if (
+      args.system.includes(SERVICE_IDEA_TASK_MARKER) ||
+      args.user.includes(SERVICE_IDEA_TASK_MARKER)
+    ) {
+      return JSON.stringify(buildMockServiceIdea(args.user));
+    }
+
     const { title: parsedTitle, content } = extractRecord(args.user);
     const haystack = `${parsedTitle} ${content}`.toLowerCase();
 

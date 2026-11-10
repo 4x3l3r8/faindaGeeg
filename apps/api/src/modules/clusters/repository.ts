@@ -22,6 +22,7 @@ import {
   serviceIdeas,
   sourceRecords,
 } from '@toi/db';
+import type { ServiceIdeaResult } from '../../ai/service-ideas.js';
 
 export interface OpportunityNeedingEmbedding {
   id: string;
@@ -264,6 +265,59 @@ export async function listClusters(params?: ListClustersParams) {
     .from(problemClusters)
     .orderBy(sql`${problemClusters.demandScore} desc nulls last`, desc(problemClusters.createdAt))
     .limit(params?.limit ?? 100);
+}
+
+export async function createServiceIdea(
+  clusterId: string | null,
+  data: ServiceIdeaResult,
+) {
+  const db = getDb();
+
+  const inserted = await db
+    .insert(serviceIdeas)
+    .values({
+      clusterId,
+      title: data.title,
+      summary: data.summary,
+      targetCustomer: data.targetCustomer,
+      suggestedService: data.suggestedService,
+      requiredSkills: data.requiredSkills,
+      engagementModel: data.engagementModel,
+      validationQuestions: data.validationQuestions,
+      nextAction: data.nextAction,
+    })
+    .returning();
+
+  const row = inserted[0];
+  if (row === undefined) {
+    throw new Error('Failed to create the service idea');
+  }
+
+  return row;
+}
+
+export async function listServiceIdeas(limit = 100) {
+  const db = getDb();
+
+  return db
+    .select({
+      id: serviceIdeas.id,
+      clusterId: serviceIdeas.clusterId,
+      clusterTitle: problemClusters.title,
+      title: serviceIdeas.title,
+      summary: serviceIdeas.summary,
+      targetCustomer: serviceIdeas.targetCustomer,
+      suggestedService: serviceIdeas.suggestedService,
+      requiredSkills: serviceIdeas.requiredSkills,
+      engagementModel: serviceIdeas.engagementModel,
+      validationQuestions: serviceIdeas.validationQuestions,
+      nextAction: serviceIdeas.nextAction,
+      createdAt: serviceIdeas.createdAt,
+    })
+    .from(serviceIdeas)
+    .leftJoin(problemClusters, eq(problemClusters.id, serviceIdeas.clusterId))
+    .orderBy(desc(serviceIdeas.createdAt))
+    .limit(limit);
 }
 
 export async function getClusterDetail(id: string) {

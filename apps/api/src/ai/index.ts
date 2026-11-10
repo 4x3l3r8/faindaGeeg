@@ -18,6 +18,18 @@ export function getAiProvider(): AiProvider {
 
 export { extractOpportunity, ExtractionValidationError } from './extract.js';
 export type { ExtractionOutcome } from './extract.js';
+export {
+  buildServiceIdeaPrompt,
+  generateServiceIdea,
+  serviceIdeaSchema,
+  SERVICE_IDEA_PROMPT_VERSION,
+  ServiceIdeaValidationError,
+} from './service-ideas.js';
+export type {
+  ServiceIdeaPrompt,
+  ServiceIdeaPromptInput,
+  ServiceIdeaResult,
+} from './service-ideas.js';
 export { buildExtractionPrompt, EXTRACTION_PROMPT_VERSION } from './prompts.js';
 export type { ExtractionPrompt, ExtractionPromptRecord } from './prompts.js';
 export {
