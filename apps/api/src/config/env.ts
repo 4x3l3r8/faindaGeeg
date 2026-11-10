@@ -24,6 +24,9 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: optionalString,
   AI_PROVIDER: z.string().min(1).default('openrouter'),
+  REDDIT_CLIENT_ID: optionalString,
+  REDDIT_CLIENT_SECRET: optionalString,
+  REDDIT_USER_AGENT: optionalString,
 });
 
 const parsed = envSchema.safeParse(process.env);
