@@ -35,6 +35,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   DB_AUTO_MIGRATE: booleanDefaultTrue,
   API_AUTH_TOKEN: optionalString,
+  CORS_ORIGIN: optionalString,
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: optionalString,
   OPENAI_API_KEY: optionalString,

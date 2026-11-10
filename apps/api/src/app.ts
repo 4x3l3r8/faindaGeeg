@@ -49,7 +49,12 @@ export async function buildApp() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(cors, { origin: env.NODE_ENV === 'development' });
+  const corsOrigin =
+    env.CORS_ORIGIN !== undefined
+      ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+      : env.NODE_ENV === 'development';
+
+  await app.register(cors, { origin: corsOrigin });
 
   await app.register(swagger, {
     openapi: {

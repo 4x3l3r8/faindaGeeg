@@ -1,0 +1,36 @@
+# Fly.io deployment for the faindaGeeg API (the ingestion webhook receiver).
+#
+# Rename the app below to your own globally-unique Fly app name, then:
+#   fly launch --no-deploy   # or: fly apps create <your-app-name>
+#
+# Secrets (set these with `fly secrets set`, NEVER commit them):
+#   fly secrets set DATABASE_URL=... INGEST_WEBHOOK_SECRET=... \
+#     OPENROUTER_API_KEY=... OPENROUTER_MODEL=... HF_API_KEY=...
+# Optional secrets:
+#   GOOGLE_SHEETS_CSV_URL=...   # enable the Google Sheets buffer source
+#   CORS_ORIGIN=...             # comma-separated web origins allowed in prod
+#   API_AUTH_TOKEN=...          # single-user bearer guard
+#
+# Non-secret configuration lives in the [env] block below.
+
+app = "faindageeg"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Keep one machine always running so inbound webhooks are never cold-started
+  # or dropped on the free tier (machines would otherwise stop when idle).
+  auto_stop_machines = false
+  min_machines_running = 1
+
+[env]
+  API_HOST = "0.0.0.0"
+  API_PORT = "8080"
+  NODE_ENV = "production"
+  DB_AUTO_MIGRATE = "true"
+  AI_PROVIDER = "openrouter"
+  EMBEDDINGS_PROVIDER = "huggingface"
