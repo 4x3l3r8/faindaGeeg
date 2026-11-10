@@ -2,6 +2,28 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Phase 1 core opportunity management completed
+
+### Completed
+
+- **Database.** Full Phase 1 Drizzle schema (10 tables with relations) and applied migration `0000_known_tomas`, plus an idempotent skills seed of 23 profile skills (`pnpm --filter @toi/db db:seed`).
+- **AI layer.** Provider-independent extraction: an OpenRouter adapter and a deterministic offline `MockProvider`, a versioned (`v1`) injection-resistant extraction prompt, and Zod-validated output. Invalid output raises `ExtractionValidationError`, which routes the submission to manual review.
+- **Scoring.** Deterministic lead scoring with 25/25/20/10/10/10 weights (skill fit, buying intent, commercial value, urgency, freshness, credibility), a configurable per-type freshness half-life, per-factor explanations plus a `missingEvidence` list, reproducible results, and score version `v1`.
+- **Submission pipeline.** Manual text or URL submission: HTML-to-text, sha256 content-hash dedup, source-record creation, AI extraction, skill matching, scoring, and a single transactional persist. Returns a discriminated result: `created`, `duplicate`, `irrelevant`, or `needs_review`.
+- **REST API** under `/api`: opportunity submit, list, detail, status, and feedback; leads CRUD plus activities; skills list/create/update; dashboard summary — with Zod validation and OpenAPI at `/docs`.
+- **Frontend.** Dashboard summary; opportunity inbox with submission form and filters; opportunity detail with evidence trail, full score explanation, matched skills, and actions; skills profile; leads/CRM master-detail with outreach activities.
+
+### Verified (2026-11-10)
+
+- All packages typecheck and build.
+- 20 Vitest unit tests pass (scoring, skill matching, extraction).
+- Full browser walkthrough verified end-to-end: submit -> scored opportunity with 6 matched skills and evidence -> promote to lead -> status change -> activity logged, plus dedup and irrelevant-rejection.
+- All 15 MVP acceptance criteria are met.
+
+### Next milestone
+
+Phase 2: ingestion engine plus the first permitted public source.
+
 ## 2026-11-09 — Phase 0 scaffolding completed
 
 ### Completed

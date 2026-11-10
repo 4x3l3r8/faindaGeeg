@@ -1,6 +1,6 @@
 # Tech Opportunity Intelligence System (faindaGeeg)
 
-A personal system to discover paid software-engineering opportunities and recurring, solvable problems from permitted public sources, following evidence of demand. It is intended to preserve source evidence, extract structured opportunities and problem signals, score them deterministically, and support lead follow-up. Phase 0 provides only the foundation: a running monorepo, an API and dashboard shell, and a Postgres database connection.
+A personal system to discover paid software-engineering opportunities and recurring, solvable problems from permitted public sources, following evidence of demand. It preserves source evidence, extracts structured opportunities, scores them deterministically, and supports lead follow-up. Phase 1 delivers core opportunity management: a manual submission pipeline, provider-independent AI extraction, a deterministic scoring service, a REST API, and a dashboard for reviewing opportunities and tracking leads.
 
 ## Tech stack
 
@@ -8,7 +8,7 @@ A personal system to discover paid software-engineering opportunities and recurr
 - **API (`apps/api`):** Fastify 5, Zod type provider, Swagger/OpenAPI UI.
 - **Web (`apps/web`):** React 18, Vite, React Router, TanStack Query, Tailwind CSS.
 - **Database (`packages/db`):** Drizzle ORM over PostgreSQL (pgvector image), via `postgres-js`.
-- **AI:** OpenRouter is the planned first LLM provider behind a provider-independent layer. That layer is **not implemented** in Phase 0.
+- **AI:** OpenRouter is the first LLM provider behind a provider-independent layer, with a deterministic offline mock provider for key-less dev and demos.
 
 ## Prerequisites
 
@@ -31,9 +31,10 @@ docker compose up -d db
 pnpm install
 pnpm --filter @toi/db build
 pnpm --filter @toi/db db:migrate
+pnpm --filter @toi/db db:seed
 ```
 
-The Phase 0 schema is empty, so migrations create no tables yet. They exist to establish the migration path for Phase 1.
+The Phase 1 migration (`0000_known_tomas`) creates the ten Phase 1 tables. `db:seed` idempotently inserts the 23 profile skills used for matching.
 
 ## Run the apps
 
@@ -60,4 +61,36 @@ Copy `env.example` to `.env`. Key variables:
 - `DATABASE_URL` — matches the `db` service in `docker-compose.yml`.
 - `API_PORT`, `API_HOST`, `API_AUTH_TOKEN` — API listener and an optional bearer-token guard (leave blank to run without auth).
 - `WEB_PORT`, `VITE_API_BASE_URL` — web dev server and API base URL.
-- `AI_PROVIDER`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `EMBEDDINGS_PROVIDER` — reserved for later phases; not required in Phase 0.
+- `AI_PROVIDER` — `openrouter` (default) or `mock`.
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` — required when `AI_PROVIDER=openrouter`. Set `AI_PROVIDER=mock` (or leave the key blank) to run fully offline with a deterministic mock extractor — handy for dev and demos, no API cost.
+- `EMBEDDINGS_PROVIDER` — reserved for Phase 4 (semantic clustering); not used yet.
+
+## Submitting an opportunity
+
+Paste raw text or a URL on the **Opportunities** page, or call the API directly:
+
+```bash
+curl -X POST http://localhost:3001/api/opportunities/submit \
+  -H 'content-type: application/json' \
+  -d '{"text":"Looking to hire a freelance React/Node.js developer to build an internal dashboard."}'
+```
+
+The pipeline deduplicates by content hash, extracts a schema-validated opportunity, matches it against your skills, scores it, and links the supporting evidence. Irrelevant content and extraction failures are recorded but do not create an opportunity.
+
+## API endpoints
+
+All under `/api` (see `/docs` for the OpenAPI spec):
+
+- `POST /opportunities/submit` — submit raw text or a URL.
+- `GET /opportunities` — list with filters (type, status, buying intent, min score, search) and pagination.
+- `GET /opportunities/:id` — detail with evidence trail, score breakdown, and matched skills.
+- `PATCH /opportunities/:id` — change status; `POST /opportunities/:id/feedback` — record relevance/notes.
+- `GET/POST /leads`, `GET/PATCH /leads/:id`, `POST /leads/:id/activities` — lead tracking and outreach activities.
+- `GET /skills`, `POST /skills`, `PATCH /skills/:id` — manage the skills profile.
+- `GET /dashboard/summary` — totals and breakdowns.
+
+## Running tests
+
+```bash
+pnpm --filter @toi/api test
+```

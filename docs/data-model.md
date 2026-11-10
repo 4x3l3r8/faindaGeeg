@@ -1,37 +1,25 @@
 # Data Model
 
-> **Phase 1 stub.** The Phase 0 database schema is intentionally empty. No tables exist yet. The entities below describe the planned model and will be implemented with Drizzle migrations in Phase 1 and later phases.
+> **Phase 1.** The Phase 1 schema is implemented in Drizzle (`packages/db/src/schema`) and applied by migration `0000_known_tomas`. Ten tables exist today; remaining entities are deferred as noted below.
 
-## Core entities
+## Implemented (Phase 1)
 
-| Entity | Purpose |
+| Entity | Table | Purpose and key relationships |
+| --- | --- | --- |
+| **Sources** | `sources` | A permitted channel that may be ingested. Has many SourceRecords. |
+| **SourceRecords** | `source_records` | A single captured item with raw content, provenance, and a `content_hash` used for dedup. Belongs to a Source; supports many OpportunityEvidence rows. |
+| **Opportunities** | `opportunities` | A structured opportunity (`gig`/`problem`/`product_gap`) with workflow status and commercial fields. |
+| **OpportunityEvidence** | `opportunity_evidence` | Links an Opportunity to the SourceRecords that support it (cascades on opportunity delete). |
+| **Skills** | `skills` | A skill or technology with category, aliases, and proficiency. Seeded with 23 profile skills. |
+| **OpportunitySkills** | `opportunity_skills` | Join table linking an Opportunity to a Skill, with match strength and a required flag. |
+| **LeadScores** | `lead_scores` | A versioned deterministic score for an Opportunity, with per-factor values and an explanation JSON. |
+| **ClientLeads** | `client_leads` | A tracked lead promoted from an Opportunity (one-to-one). Has many OutreachActivities. |
+| **OutreachActivities** | `outreach_activities` | A recorded outreach or follow-up action for a ClientLead. |
+| **OpportunityFeedback** | `opportunity_feedback` | Relevance, rating, and notes feedback for an Opportunity. |
+
+## Deferred
+
+| Entity | Deferred to |
 | --- | --- |
-| **Sources** | A permitted public source (site, feed, or other channel) that may be ingested. |
-| **SourceRecords** | A single captured item from a source, preserving raw content and provenance. |
-| **Opportunities** | A structured, potentially paid software-engineering opportunity. |
-| **OpportunityEvidence** | Links an opportunity to the source records that support it. |
-| **Skills** | A skill or technology relevant to matching and scoring opportunities. |
-| **OpportunitySkills** | Join table linking opportunities to required or relevant skills. |
-| **LeadScores** | A deterministic score for an opportunity or lead, with versioned inputs. |
-| **ProblemClusters** | A group of recurring, related problems. |
-| **ClusterMembers** | Join table linking problems or opportunities to a cluster. |
-| **ClientLeads** | A prospective client or lead associated with an opportunity. |
-| **OutreachActivities** | A recorded outreach or follow-up action for a lead. |
-
-## Optional entities
-
-| Entity | Purpose |
-| --- | --- |
-| **IngestionRuns** | An audit record of a single ingestion execution. |
-| **OpportunityFeedback** | User feedback on an opportunity's quality or relevance. |
-| **ServiceIdeas** | A potential productised service derived from recurring problems. |
-
-## Key relationships
-
-- A **Source** has many **SourceRecords**.
-- A **SourceRecord** can support many **OpportunityEvidence** rows; each row points to one **Opportunity**.
-- An **Opportunity** has many **OpportunitySkills** rows, each referencing a **Skill**.
-- An **Opportunity** or **ClientLead** can have versioned **LeadScores**.
-- A **ProblemCluster** has many **ClusterMembers**.
-- A **ClientLead** has many **OutreachActivities**.
-- **IngestionRuns** reference the **Source** being processed.
+| **ProblemClusters**, **ClusterMembers**, **ServiceIdeas** | Phase 4 (problem intelligence and clustering). |
+| **Dedicated ingestion-run tables** | Phase 2 (ingestion engine). |
