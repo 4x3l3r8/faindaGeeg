@@ -18,6 +18,7 @@ export interface ProcessSourceRecordTarget {
   id: string;
   title: string | null;
   content: string;
+  publishedAt?: Date | null;
 }
 
 export interface ProcessSourceRecordOptions {
@@ -64,7 +65,7 @@ export async function processSourceRecord(
     commercialEvidence: result.commercialEvidence,
     skillMatch: match.stats,
     sourceCredibility: opts.sourceCredibility,
-    publishedAt: null,
+    publishedAt: record.publishedAt ?? null,
     now: opts.now ?? new Date(),
   });
 

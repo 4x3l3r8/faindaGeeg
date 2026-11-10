@@ -32,6 +32,8 @@ export interface SourceRecordInput {
   title: string | null;
   contentText: string;
   contentHash: string;
+  authorKey?: string | null;
+  publishedAt?: Date | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -153,6 +155,8 @@ export async function insertSourceRecord(
       title: data.title,
       contentText: data.contentText,
       contentHash: data.contentHash,
+      ...(data.authorKey === undefined ? {} : { authorKey: data.authorKey }),
+      ...(data.publishedAt === undefined ? {} : { publishedAt: data.publishedAt }),
       ...(data.metadata === undefined ? {} : { metadata: data.metadata }),
     })
     .returning();

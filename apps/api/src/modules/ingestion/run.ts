@@ -134,13 +134,20 @@ export async function runIngestion(opts?: RunIngestionOptions): Promise<RunInges
           title: raw.title ?? null,
           contentText: raw.content,
           contentHash,
+          authorKey: raw.authorKey ?? null,
+          publishedAt: raw.publishedAt ?? null,
           metadata,
         });
         recordsNew++;
 
         try {
           const processed = await processSourceRecord(
-            { id: inserted.id, title: inserted.title, content: inserted.contentText },
+            {
+              id: inserted.id,
+              title: inserted.title,
+              content: inserted.contentText,
+              publishedAt: inserted.publishedAt,
+            },
             { sourceCredibility: SOURCE_CREDIBILITY },
           );
           recordsProcessed++;
