@@ -288,11 +288,6 @@ export interface IngestionRun {
 export interface IngestionRunSummary {
   runId: string;
   status: IngestionStatus;
-  recordsFetched: number;
-  recordsNew: number;
-  recordsProcessed: number;
-  opportunitiesCreated: number;
-  error: string | null;
 }
 
 export interface TriggerIngestionInput {

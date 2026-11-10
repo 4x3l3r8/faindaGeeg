@@ -163,6 +163,14 @@ export function useIngestionRuns(params: ListIngestionRunsParams = {}) {
   return useQuery({
     queryKey: queryKeys.ingestion.runs(params),
     queryFn: () => listIngestionRuns(params),
+    // Poll while a run is active so progress counts update live, then stop.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return Array.isArray(data) &&
+        data.some((r) => r.status === 'running' || r.status === 'pending')
+        ? 2000
+        : false;
+    },
   });
 }
 

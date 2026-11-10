@@ -183,9 +183,7 @@ function RunSummaryLine({ summary }: { summary: IngestionRunSummary }) {
   return (
     <p className="mt-3 text-sm text-muted-foreground">
       <StatusBadge status={summary.status} />{' '}
-      {summary.error
-        ? summary.error
-        : `Fetched ${summary.recordsFetched}, new ${summary.recordsNew}, processed ${summary.recordsProcessed}, created ${summary.opportunitiesCreated}.`}
+      Run started — watching progress in Recent runs below.
     </p>
   );
 }
