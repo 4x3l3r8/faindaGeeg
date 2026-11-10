@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { insertSourceRecord } from '../opportunities/persistence.js';
 import { sourceTypes, type SourceType } from '../../shared/index.js';
 import { getConnector } from './connectors/index.js';
-import type { IngestionCursor } from './connector.js';
+import type { IngestionCursor, ISourceConnector } from './connector.js';
 import { processSourceRecord } from './processing.js';
 import {
   createRun,
@@ -13,6 +13,7 @@ import {
   markSourceSynced,
   updateRun,
   type IngestionRun,
+  type SourceRecord,
 } from './repository.js';
 
 export interface RunIngestionOptions {
@@ -30,9 +31,27 @@ export interface RunIngestionResult {
   error: string | null;
 }
 
+export interface StartIngestionResult {
+  runId: string;
+  status: 'running';
+}
+
+interface ExecuteIngestionOptions {
+  maxRecords: number;
+}
+
+interface IngestionProgress {
+  recordsFetched: number;
+  recordsNew: number;
+  recordsProcessed: number;
+  opportunitiesCreated: number;
+}
+
 const DEFAULT_SOURCE_NAME = 'Hacker News';
 const DEFAULT_MAX_RECORDS = 25;
 const SOURCE_CREDIBILITY = 45;
+const CONCURRENCY_LIMIT = 4;
+const PROGRESS_WRITE_INTERVAL_MS = 1500;
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
@@ -76,10 +95,35 @@ async function resolveStartingCursor(
   return undefined;
 }
 
-export async function runIngestion(opts?: RunIngestionOptions): Promise<RunIngestionResult> {
-  const sourceName = opts?.sourceName ?? DEFAULT_SOURCE_NAME;
-  const maxRecords = opts?.maxRecords ?? DEFAULT_MAX_RECORDS;
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
 
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const item = items[index];
+      if (item === undefined) {
+        continue;
+      }
+      results[index] = await fn(item, index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  return results;
+}
+
+async function resolveConnectorAndSource(
+  sourceName: string,
+): Promise<{ connector: ISourceConnector; sourceId: string }> {
   const connector = getConnector(sourceName);
   if (connector === null) {
     throw new Error(`Unknown ingestion source: ${sourceName}`);
@@ -90,30 +134,59 @@ export async function runIngestion(opts?: RunIngestionOptions): Promise<RunInges
     sourceType: toSourceType(connector.sourceType),
   });
 
-  const run = await createRun(source.id);
+  return { connector, sourceId: source.id };
+}
 
-  let cursor = await resolveStartingCursor(source.id, run.id);
+async function executeIngestion(
+  runId: string,
+  sourceId: string,
+  connector: ISourceConnector,
+  opts: ExecuteIngestionOptions,
+): Promise<RunIngestionResult> {
+  const maxRecords = opts.maxRecords;
 
-  let recordsFetched = 0;
-  let recordsNew = 0;
-  let recordsProcessed = 0;
-  let opportunitiesCreated = 0;
+  let cursor = await resolveStartingCursor(sourceId, runId);
+
+  const progress: IngestionProgress = {
+    recordsFetched: 0,
+    recordsNew: 0,
+    recordsProcessed: 0,
+    opportunitiesCreated: 0,
+  };
   const perRecordErrors: string[] = [];
+
+  let lastProgressWrite = Date.now();
+
+  const writeProgressThrottled = async (): Promise<void> => {
+    const now = Date.now();
+    if (now - lastProgressWrite < PROGRESS_WRITE_INTERVAL_MS) {
+      return;
+    }
+    lastProgressWrite = now;
+    await updateRun(runId, {
+      recordsFetched: progress.recordsFetched,
+      recordsNew: progress.recordsNew,
+      recordsProcessed: progress.recordsProcessed,
+      opportunitiesCreated: progress.opportunitiesCreated,
+    });
+  };
 
   let status: IngestionRun['status'] = 'success';
   let failureMessage: string | null = null;
 
   try {
-    while (recordsNew < maxRecords) {
+    while (progress.recordsNew < maxRecords) {
       const batch = await connector.fetch(cursor);
-      recordsFetched += batch.records.length;
+      progress.recordsFetched += batch.records.length;
+
+      const newRecords: SourceRecord[] = [];
 
       for (const raw of batch.records) {
-        if (recordsNew >= maxRecords) {
+        if (progress.recordsNew >= maxRecords) {
           break;
         }
 
-        const existing = await findSourceRecordByExternalId(source.id, raw.externalId);
+        const existing = await findSourceRecordByExternalId(sourceId, raw.externalId);
         if (existing !== undefined) {
           continue;
         }
@@ -128,7 +201,7 @@ export async function runIngestion(opts?: RunIngestionOptions): Promise<RunInges
         }
 
         const inserted = await insertSourceRecord({
-          sourceId: source.id,
+          sourceId,
           externalId: raw.externalId,
           canonicalUrl: raw.url ?? null,
           title: raw.title ?? null,
@@ -138,35 +211,43 @@ export async function runIngestion(opts?: RunIngestionOptions): Promise<RunInges
           publishedAt: raw.publishedAt ?? null,
           metadata,
         });
-        recordsNew++;
+        progress.recordsNew++;
+        newRecords.push(inserted);
+      }
 
+      await writeProgressThrottled();
+
+      await mapWithConcurrency(newRecords, CONCURRENCY_LIMIT, async (record) => {
         try {
           const processed = await processSourceRecord(
             {
-              id: inserted.id,
-              title: inserted.title,
-              content: inserted.contentText,
-              publishedAt: inserted.publishedAt,
+              id: record.id,
+              title: record.title,
+              content: record.contentText,
+              publishedAt: record.publishedAt,
             },
             { sourceCredibility: SOURCE_CREDIBILITY },
           );
-          recordsProcessed++;
+          progress.recordsProcessed++;
           if (processed.status === 'created') {
-            opportunitiesCreated++;
+            progress.opportunitiesCreated++;
           }
         } catch (error) {
           perRecordErrors.push(toErrorMessage(error));
         }
-      }
+        await writeProgressThrottled();
+      });
 
       cursor = batch.nextCursor;
       if (!batch.hasMore || cursor === undefined) {
         break;
       }
+
+      await writeProgressThrottled();
     }
   } catch (error) {
     failureMessage = toErrorMessage(error);
-    status = recordsProcessed === 0 ? 'failed' : 'partial';
+    status = progress.recordsProcessed === 0 ? 'failed' : 'partial';
     perRecordErrors.push(failureMessage);
   }
 
@@ -175,32 +256,60 @@ export async function runIngestion(opts?: RunIngestionOptions): Promise<RunInges
   }
 
   const error =
-    status === 'failed'
-      ? failureMessage
-      : perRecordErrors.slice(0, 5).join(' | ') || null;
+    status === 'failed' ? failureMessage : perRecordErrors.slice(0, 5).join(' | ') || null;
 
-  await updateRun(run.id, {
+  await updateRun(runId, {
     status,
     finishedAt: new Date(),
-    recordsFetched,
-    recordsNew,
-    recordsProcessed,
-    opportunitiesCreated,
+    recordsFetched: progress.recordsFetched,
+    recordsNew: progress.recordsNew,
+    recordsProcessed: progress.recordsProcessed,
+    opportunitiesCreated: progress.opportunitiesCreated,
     error,
     cursor: cursor ?? null,
   });
 
   if (status === 'success' || status === 'partial') {
-    await markSourceSynced(source.id, new Date());
+    await markSourceSynced(sourceId, new Date());
   }
 
   return {
-    runId: run.id,
+    runId,
     status,
-    recordsFetched,
-    recordsNew,
-    recordsProcessed,
-    opportunitiesCreated,
+    recordsFetched: progress.recordsFetched,
+    recordsNew: progress.recordsNew,
+    recordsProcessed: progress.recordsProcessed,
+    opportunitiesCreated: progress.opportunitiesCreated,
     error,
   };
+}
+
+export async function runIngestion(opts?: RunIngestionOptions): Promise<RunIngestionResult> {
+  const sourceName = opts?.sourceName ?? DEFAULT_SOURCE_NAME;
+  const maxRecords = opts?.maxRecords ?? DEFAULT_MAX_RECORDS;
+
+  const { connector, sourceId } = await resolveConnectorAndSource(sourceName);
+
+  const run = await createRun(sourceId);
+
+  return executeIngestion(run.id, sourceId, connector, { maxRecords });
+}
+
+export async function startIngestion(opts?: RunIngestionOptions): Promise<StartIngestionResult> {
+  const sourceName = opts?.sourceName ?? DEFAULT_SOURCE_NAME;
+  const maxRecords = opts?.maxRecords ?? DEFAULT_MAX_RECORDS;
+
+  const { connector, sourceId } = await resolveConnectorAndSource(sourceName);
+
+  const run = await createRun(sourceId);
+
+  void executeIngestion(run.id, sourceId, connector, { maxRecords }).catch(async (error) => {
+    await updateRun(run.id, {
+      status: 'failed',
+      finishedAt: new Date(),
+      error: toErrorMessage(error),
+    });
+  });
+
+  return { runId: run.id, status: 'running' };
 }
