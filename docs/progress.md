@@ -2,6 +2,15 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Native pull connectors: Stack Exchange, Remotive, and generic RSS/Atom
+
+- **Three new pull connectors**, all registered in the connector registry and run by the existing engine/Sources UI:
+  - **Stack Exchange** (`Stack Exchange`) — polls the free Stack Exchange API for recent questions by tag; optional `STACKEXCHANGE_SITE`, `STACKEXCHANGE_TAGS`, `STACKEXCHANGE_KEY`.
+  - **Remotive** (`Remotive`) — pulls the free Remotive remote-jobs API; optional `REMOTIVE_CATEGORY`, `REMOTIVE_SEARCH`.
+  - **RSS** (`RSS`) — a generic RSS 2.0 / Atom connector that walks every configured feed across batches; requires `RSS_FEED_URLS` (comma-separated).
+- **Shared util.** Added `stripHtml` (`shared/text.ts`), now used by the new connectors to convert feed/question/job HTML into plain text.
+- **Verified (2026-11-10):** all three connectors registered and live-verified against their real APIs. 68 Vitest unit tests pass.
+
 ## 2026-11-10 — Inbound push ingestion, Google Sheets buffer, and fly.io/Neon deployment
 
 - **Inbound webhook.** `POST /api/ingestion/inbound` accepts pushed records from external automations (n8n/IFTTT), authenticated with the `X-Webhook-Secret` header (`INGEST_WEBHOOK_SECRET`). Accepts a single record, a bare array, or `{ records: [...] }` (max 50); `202 { accepted, duplicates, runIds }`, `401` on a bad secret, `503` when disabled. Dedup is per-source by `externalId` (falls back to content hash); records are persisted and processed in the background. See `docs/integrations/inbound-ingestion.md`.

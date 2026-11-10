@@ -83,23 +83,28 @@ The pipeline deduplicates by content hash, extracts a schema-validated opportuni
 
 Ingestion pulls permitted public sources through connectors and processes each record with the same pipeline as manual submission. Dedup is by external id, runs resume from a saved cursor, per-record errors are isolated, and a `maxRecords` cap limits each run.
 
-Hacker News works with **no configuration** — it uses the public Algolia API. Trigger a run from the **Sources** page (connector picker + max records) or via the API:
+Trigger a run from the **Sources** page (connector picker + max records) or via the API:
 
 ```bash
 curl -X POST http://localhost:3001/api/ingestion/runs \
   -H 'content-type: application/json' \
-  -d '{"sourceName":"hackernews","maxRecords":25}'
+  -d '{"sourceName":"Hacker News","maxRecords":25}'
 ```
 
-The body is `{ sourceName?, maxRecords? }` (`sourceName` defaults to the configured source, `maxRecords` defaults to 25).
+The body is `{ sourceName?, maxRecords? }` (`sourceName` defaults to the configured source, `maxRecords` defaults to 25). `GET /api/ingestion/connectors` lists the registered connectors.
 
-To enable **Reddit**, register an app at https://www.reddit.com/prefs/apps (script/web type) and set the following in `.env`:
+### Pull connectors
 
-- `REDDIT_CLIENT_ID`
-- `REDDIT_CLIENT_SECRET`
-- `REDDIT_USER_AGENT`
+| `sourceName` | What it pulls | Config env |
+| --- | --- | --- |
+| `Hacker News` | Public Algolia API — zero config. | none |
+| `Reddit` | Official OAuth (application-only, read-only). Register an app at https://www.reddit.com/prefs/apps (script/web type). | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT` |
+| `Stack Exchange` | Free Stack Exchange API — recent questions by tag. All vars optional. | `STACKEXCHANGE_SITE` (default `stackoverflow`), `STACKEXCHANGE_TAGS` (comma-separated, default `typescript,node.js,react,api`), `STACKEXCHANGE_KEY` (optional app key; raises the anonymous quota) |
+| `Remotive` | Free Remotive remote-jobs API. Both vars optional. | `REMOTIVE_CATEGORY` (default `software-dev`), `REMOTIVE_SEARCH` (optional free-text search) |
+| `RSS` | Generic RSS 2.0 / Atom — walks every configured feed across batches. Requires at least one feed URL. | `RSS_FEED_URLS` (comma-separated feed URLs; e.g. WeWorkRemotely programming RSS, subreddit RSS, Discourse/blog feeds) |
+| `Google Sheets` | Durable CSV buffer — drains a sheet published to the web. | `GOOGLE_SHEETS_CSV_URL` |
 
-The connector uses the official OAuth application-only flow (`client_credentials`, read-only). Credentials are read from the environment only and are never stored in source config.
+Credentials are read from the environment only and are never stored in source config. For the Sheets buffer, the CSV columns are `externalId,url,title,content,author,publishedAt`; each run drains the whole sheet and downstream dedup by `externalId` prevents reprocessing.
 
 ### Push ingestion (webhooks) and the Google Sheets buffer
 
