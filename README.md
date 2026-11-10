@@ -30,11 +30,10 @@ Start Docker Desktop, then start Postgres and install/build:
 docker compose up -d db
 pnpm install
 pnpm --filter @toi/db build
-pnpm --filter @toi/db db:migrate
 pnpm --filter @toi/db db:seed
 ```
 
-The Phase 1 migration (`0000_known_tomas`) creates the ten Phase 1 tables. `db:seed` idempotently inserts the 23 profile skills used for matching.
+The API applies any unapplied migrations automatically on startup (`DB_AUTO_MIGRATE`, default true), so a fresh database — including one created after tearing down the Docker volume — is schema-ready on first boot; set `DB_AUTO_MIGRATE=false` to manage migrations manually, or run `pnpm --filter @toi/db db:migrate` yourself. `db:seed` idempotently inserts the 23 profile skills used for matching (run it after the schema exists).
 
 ## Run the apps
 
