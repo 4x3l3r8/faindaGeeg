@@ -55,6 +55,7 @@ const envSchema = z.object({
   STACKEXCHANGE_KEY: optionalString,
   REMOTIVE_CATEGORY: optionalString,
   REMOTIVE_SEARCH: optionalString,
+  RSS_FEED_URLS: optionalString,
 });
 
 const parsed = envSchema.safeParse(process.env);
