@@ -1,6 +1,7 @@
 import { EMBEDDING_DIM, getEmbedder } from '../../ai/index.js';
 import {
   addClusterMember,
+  clearEmbeddingsAndClusters,
   createCluster,
   findNearestCluster,
   getClusterMemberEmbeddings,
@@ -13,6 +14,7 @@ import {
 export interface ClusteringOptions {
   similarityThreshold?: number;
   embedBatch?: number;
+  reembed?: boolean;
 }
 
 export interface ClusteringResult {
@@ -62,10 +64,15 @@ function meanNormalize(vectors: number[][]): number[] {
 export async function runClustering(opts?: ClusteringOptions): Promise<ClusteringResult> {
   const threshold = opts?.similarityThreshold ?? 0.45;
   const batch = opts?.embedBatch ?? 100;
+  const reembed = opts?.reembed ?? false;
 
   let opportunitiesEmbedded = 0;
   let clustersCreated = 0;
   let membersAdded = 0;
+
+  if (reembed) {
+    await clearEmbeddingsAndClusters();
+  }
 
   const embedder = getEmbedder();
   for (;;) {
@@ -98,7 +105,18 @@ export async function runClustering(opts?: ClusteringOptions): Promise<Clusterin
   const touchedClusterIds = new Set<string>();
 
   for (const opportunity of pending) {
-    const nearest = await findNearestCluster(opportunity.embedding);
+    let nearest: Awaited<ReturnType<typeof findNearestCluster>>;
+    try {
+      nearest = await findNearestCluster(opportunity.embedding);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('dimensions') || message.includes('different vector dimensions')) {
+        throw new Error(
+          'Embedding dimension changed; re-run with reembed:true to rebuild with the current model.',
+        );
+      }
+      throw error;
+    }
 
     if (nearest !== null && nearest.similarity >= threshold) {
       await addClusterMember(nearest.id, opportunity.id, nearest.similarity);

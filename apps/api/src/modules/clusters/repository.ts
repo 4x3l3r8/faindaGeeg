@@ -76,6 +76,13 @@ export async function setOpportunityEmbedding(id: string, embedding: number[]): 
   await db.update(opportunities).set({ embedding }).where(eq(opportunities.id, id));
 }
 
+export async function clearEmbeddingsAndClusters(): Promise<void> {
+  const db = getDb();
+
+  await db.update(opportunities).set({ embedding: null });
+  await db.delete(problemClusters);
+}
+
 export async function getUnclusteredOpportunities(
   limit = 500,
 ): Promise<UnclusteredOpportunity[]> {

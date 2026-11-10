@@ -33,6 +33,7 @@ const listClustersQuery = z.object({
 const rebuildBody = z
   .object({
     similarityThreshold: z.coerce.number().min(0).max(1).optional(),
+    reembed: z.coerce.boolean().optional(),
   })
   .nullish()
   .transform((v) => v ?? {});
@@ -130,9 +131,12 @@ const clusterRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const options: { similarityThreshold?: number } = {};
+      const options: { similarityThreshold?: number; reembed?: boolean } = {};
       if (request.body.similarityThreshold !== undefined) {
         options.similarityThreshold = request.body.similarityThreshold;
+      }
+      if (request.body.reembed !== undefined) {
+        options.reembed = request.body.reembed;
       }
 
       const summary = await runClustering(options);

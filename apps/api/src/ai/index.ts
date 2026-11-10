@@ -47,5 +47,5 @@ export type {
 } from './provider.js';
 export { MockProvider } from './mock.js';
 export { OpenRouterProvider } from './openrouter.js';
-export { cosineSimilarity, EMBEDDING_DIM, getEmbedder } from './embeddings.js';
+export { cosineSimilarity, EMBEDDING_DIM, getEmbedder, HuggingFaceEmbedder } from './embeddings.js';
 export type { Embedder } from './embeddings.js';

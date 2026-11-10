@@ -14,6 +14,11 @@ const optionalString = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const optionalPositiveInt = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.coerce.number().int().positive().optional(),
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_HOST: z.string().min(1).default('0.0.0.0'),
@@ -24,6 +29,10 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: optionalString,
   OPENAI_API_KEY: optionalString,
+  OPENAI_EMBEDDINGS_MODEL: optionalString,
+  HF_API_KEY: optionalString,
+  HF_EMBEDDINGS_MODEL: optionalString,
+  EMBEDDING_DIM: optionalPositiveInt,
   EMBEDDINGS_PROVIDER: optionalString,
   AI_PROVIDER: z.string().min(1).default('openrouter'),
   REDDIT_CLIENT_ID: optionalString,
