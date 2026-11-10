@@ -1,21 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import {
-  ExtractionValidationError,
-  extractOpportunity,
-  getAiProvider,
-  type AiProvider,
-  type ExtractionOutcome,
-} from '../../ai/index.js';
-import type { OpportunityType } from '../../shared/index.js';
-import { SCORE_VERSION, scoreOpportunity } from '../scoring/index.js';
-import { matchSkills } from '../skills/match.js';
+import { processSourceRecord } from '../ingestion/processing.js';
 import {
   findSourceRecordByHash,
   getOrCreateManualSource,
-  insertOpportunityGraph,
   insertSourceRecord,
-  listEnabledSkills,
 } from './persistence.js';
 
 export type SubmitResult =
@@ -97,20 +86,6 @@ function hashContent(content: string): string {
   return createHash('sha256').update(collapseWhitespace(content)).digest('hex');
 }
 
-async function tryExtract(
-  record: { title: string | null; content: string },
-  provider: AiProvider,
-): Promise<ExtractionOutcome | null> {
-  try {
-    return await extractOpportunity(record, provider);
-  } catch (error) {
-    if (error instanceof ExtractionValidationError) {
-      return null;
-    }
-    throw error;
-  }
-}
-
 export async function submitManual(input: { text?: string; url?: string }): Promise<SubmitResult> {
   const url = input.url?.trim();
   const hasUrl = url !== undefined && url.length > 0;
@@ -158,82 +133,22 @@ export async function submitManual(input: { text?: string; url?: string }): Prom
 
   const sourceRecordId = sourceRecord.id;
 
-  const provider = getAiProvider();
+  const processed = await processSourceRecord(
+    { id: sourceRecord.id, title: sourceRecord.title, content: sourceRecord.contentText },
+    { sourceCredibility: 50 },
+  );
 
-  const outcome = await tryExtract({ title, content }, provider);
-  if (outcome === null) {
-    return {
-      status: 'needs_review',
-      sourceRecordId,
-      reason: 'extraction failed schema validation',
-    };
+  if (processed.status === 'needs_review') {
+    return { status: 'needs_review', sourceRecordId, reason: processed.reason };
   }
 
-  const result = outcome.result;
-
-  if (result.classification === 'irrelevant' || result.isRelevant === false) {
+  if (processed.status === 'irrelevant') {
     return { status: 'irrelevant', sourceRecordId };
   }
 
-  const skills = await listEnabledSkills();
-  const match = matchSkills(result.requiredSkills, skills);
-
-  const opportunityType: OpportunityType = result.classification;
-
-  const score = scoreOpportunity({
-    opportunityType,
-    buyingIntent: result.buyingIntent,
-    urgency: result.urgency,
-    budget: result.budget === null ? null : { min: result.budget.min, max: result.budget.max },
-    commercialEvidence: result.commercialEvidence,
-    skillMatch: match.stats,
-    sourceCredibility: 50,
-    publishedAt: null,
-    now: new Date(),
-  });
-
-  const opportunityId = await insertOpportunityGraph({
-    opportunity: {
-      opportunityType,
-      title: result.title,
-      description: result.problemSummary,
-      targetCustomer: result.targetCustomer,
-      buyingIntent: result.buyingIntent,
-      engagementType: result.engagementType,
-      budgetMin: result.budget?.min ?? null,
-      budgetMax: result.budget?.max ?? null,
-      currency: result.budget?.currency ?? null,
-      urgency: result.urgency,
-      commercialEvidence: result.commercialEvidence,
-      confidence: result.confidence,
-    },
-    evidence: result.evidenceExcerpts.map((item) => ({
-      sourceRecordId,
-      evidenceType: item.type,
-      excerpt: item.excerpt,
-      strength: null,
-    })),
-    skills: match.matches.map((item) => ({
-      skillId: item.skillId,
-      matchStrength: item.matchStrength,
-      isRequired: item.isRequired,
-      evidenceExcerpt: item.evidenceExcerpt,
-    })),
-    leadScore: {
-      scoreVersion: SCORE_VERSION,
-      skillFit: score.skillFit,
-      buyingIntent: score.buyingIntent,
-      commercialValue: score.commercialValue,
-      urgency: score.urgency,
-      freshness: score.freshness,
-      credibility: score.credibility,
-      totalScore: score.totalScore,
-      explanation: {
-        factors: score.explanation.factors,
-        missingEvidence: score.explanation.missingEvidence,
-      },
-    },
-  });
-
-  return { status: 'created', opportunityId, totalScore: score.totalScore };
+  return {
+    status: 'created',
+    opportunityId: processed.opportunityId,
+    totalScore: processed.totalScore,
+  };
 }
