@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
-
 import { processSourceRecord } from '../ingestion/processing.js';
+import { collapseWhitespace, hashContent } from '../../shared/hash.js';
 import {
   findSourceRecordByHash,
   getOrCreateManualSource,
@@ -34,10 +33,6 @@ function decodeEntities(value: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&amp;/g, '&');
-}
-
-function collapseWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
 }
 
 function htmlToText(html: string): FetchedPage {
@@ -80,10 +75,6 @@ function firstLineTitle(text: string): string | null {
   }
 
   return null;
-}
-
-function hashContent(content: string): string {
-  return createHash('sha256').update(collapseWhitespace(content)).digest('hex');
 }
 
 export async function submitManual(input: { text?: string; url?: string }): Promise<SubmitResult> {
