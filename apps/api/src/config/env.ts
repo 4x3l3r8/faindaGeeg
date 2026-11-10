@@ -23,6 +23,8 @@ const envSchema = z.object({
   API_AUTH_TOKEN: optionalString,
   OPENROUTER_API_KEY: optionalString,
   OPENROUTER_MODEL: optionalString,
+  OPENAI_API_KEY: optionalString,
+  EMBEDDINGS_PROVIDER: optionalString,
   AI_PROVIDER: z.string().min(1).default('openrouter'),
   REDDIT_CLIENT_ID: optionalString,
   REDDIT_CLIENT_SECRET: optionalString,
