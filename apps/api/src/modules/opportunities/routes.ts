@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { type ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
+import { generateOutreachDraft, getAiProvider } from '../../ai/index.js';
 import {
   buyingIntentSchema,
   opportunityStatusSchema,
@@ -198,6 +199,45 @@ const opportunitiesRoutes: FastifyPluginAsync = async (app) => {
         notes: request.body.notes ?? null,
       });
       return reply.status(201).send({ data: feedback });
+    },
+  );
+
+  server.post(
+    '/opportunities/:id/outreach-drafts',
+    {
+      schema: {
+        tags: ['opportunities'],
+        summary: 'Generate an outreach draft',
+        description:
+          'Generates a human-reviewable outreach draft for an opportunity. Draft-only: nothing is sent or persisted.',
+        params: idParams,
+        response: {
+          201: dataResponse,
+          404: errorResponse,
+        },
+      },
+    },
+    async (request, reply) => {
+      const detail = await getOpportunityDetail(request.params.id);
+      if (detail === null) {
+        return reply.status(404).send({
+          error: { message: 'Opportunity not found', statusCode: 404 },
+        });
+      }
+
+      const draft = await generateOutreachDraft(
+        {
+          title: detail.title,
+          description: detail.description,
+          opportunityType: detail.opportunityType,
+          targetCustomer: detail.targetCustomer,
+          buyingIntent: detail.buyingIntent,
+          matchedSkills: detail.skills.map((skill) => skill.name),
+        },
+        getAiProvider(),
+      );
+
+      return reply.status(201).send({ data: draft });
     },
   );
 };
