@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -12,8 +13,19 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
-  vector,
 } from 'drizzle-orm/pg-core';
+
+export const agnosticVector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return 'vector';
+  },
+  toDriver(value) {
+    return '[' + value.join(',') + ']';
+  },
+  fromDriver(value) {
+    return (typeof value === 'string' ? JSON.parse(value) : value) as number[];
+  },
+});
 
 export const opportunityTypeEnum = pgEnum('opportunity_type', ['gig', 'problem', 'product_gap']);
 
@@ -149,7 +161,7 @@ export const opportunities = pgTable(
     firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    embedding: vector('embedding', { dimensions: 256 }),
+    embedding: agnosticVector('embedding'),
   },
   (table) => [
     index('opportunities_status_idx').on(table.status),
@@ -274,7 +286,7 @@ export const problemClusters = pgTable('problem_clusters', {
   description: text('description'),
   targetAudience: text('target_audience'),
   problemCategory: text('problem_category'),
-  centroid: vector('centroid', { dimensions: 256 }),
+  centroid: agnosticVector('centroid'),
   memberCount: integer('member_count').notNull().default(0),
   independentSourceCount: integer('independent_source_count').notNull().default(0),
   demandScore: numeric('demand_score'),
