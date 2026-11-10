@@ -47,6 +47,7 @@ const envSchema = z.object({
   REDDIT_CLIENT_ID: optionalString,
   REDDIT_CLIENT_SECRET: optionalString,
   REDDIT_USER_AGENT: optionalString,
+  GOOGLE_SHEETS_CSV_URL: optionalString,
   INGEST_WEBHOOK_SECRET: optionalString,
 });
 
