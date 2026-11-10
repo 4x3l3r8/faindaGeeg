@@ -2,6 +2,28 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Phase 3 — lead management (outreach drafts + daily digest) completed
+
+### Completed
+
+- **Lead tracking core (Phase 1).** Lead status, notes, follow-up dates, and outreach activities already shipped in Phase 1. Phase 3 adds the AI outreach-draft generator and the daily digest on top of that core.
+- **Plain-text generation.** `AiProvider.generateText` added to the provider layer: OpenRouter returns plain text, and the offline `MockProvider` returns a deterministic draft for key-less dev and demos.
+- **Draft-only outreach (`ai/outreach.ts`).** Generates a concise outreach message behind a v1 injection-safe prompt that treats the opportunity text as untrusted data, references genuinely relevant skills, asks exactly one clarifying question, uses a `[your name]` sign-off placeholder, and never fabricates the recipient, budget, or links. It only drafts — it never sends.
+- **Outreach route.** `POST /api/opportunities/:id/outreach-drafts` returns an editable draft (draft-only).
+- **Daily digest.** `getDailyDigest` plus `GET /api/dashboard/digest`: new opportunities (last N hours, default 24), high-priority opportunities (score >= 80 with status `new` or `reviewing`), and leads whose follow-ups are due (`next_action_at` within 24h), each with a count.
+- **UI.** Opportunity detail gains an "Outreach draft" card (generate → edit → copy, with a draft-only note); the dashboard gains a "Today's digest" card.
+
+### Verified (2026-11-10)
+
+- The outreach and digest endpoints were verified over HTTP.
+- The UI was verified in the browser: the digest card renders and a draft generates into an editable textarea.
+- 33 Vitest tests pass, including 7 new outreach tests.
+- The system never auto-contacts anyone: outreach is draft-only and human-approved.
+
+### Next milestone
+
+Phase 4: problem intelligence (embeddings, clustering, service ideas).
+
 ## 2026-11-10 — Phase 2 ingestion engine completed
 
 ### Completed

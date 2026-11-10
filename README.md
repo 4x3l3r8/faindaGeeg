@@ -107,12 +107,16 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET /opportunities` — list with filters (type, status, buying intent, min score, search) and pagination.
 - `GET /opportunities/:id` — detail with evidence trail, score breakdown, and matched skills.
 - `PATCH /opportunities/:id` — change status; `POST /opportunities/:id/feedback` — record relevance/notes.
+- `POST /opportunities/:id/outreach-drafts` — generate an editable outreach draft; never sends.
 - `GET/POST /leads`, `GET/PATCH /leads/:id`, `POST /leads/:id/activities` — lead tracking and outreach activities.
 - `GET /skills`, `POST /skills`, `PATCH /skills/:id` — manage the skills profile.
 - `GET /dashboard/summary` — totals and breakdowns.
+- `GET /dashboard/digest` — daily digest: new opportunities, high-priority opportunities, and follow-ups due.
 - `GET/POST /ingestion/runs` — list recent runs / trigger a run (`{ sourceName?, maxRecords? }`).
 - `GET /sources` — list configured ingestion sources.
 - `GET /ingestion/connectors` — list available connectors.
+
+Outreach is draft-only and human-approved: the system suggests an editable message and never contacts anyone.
 
 ## Running tests
 
