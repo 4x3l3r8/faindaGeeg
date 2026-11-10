@@ -5,25 +5,31 @@ import {
   createLead,
   createSkill,
   generateOutreachDraft,
+  generateServiceIdeaForCluster,
+  getCluster,
   getDashboardSummary,
   getDigest,
   getLead,
   getOpportunity,
+  listClusters,
   listConnectors,
   listIngestionRuns,
   listLeads,
   listOpportunities,
+  listServiceIdeas,
   listSkills,
   listSources,
   patchLead,
   patchOpportunityStatus,
   patchSkill,
   postFeedback,
+  rebuildClusters,
   submitOpportunity,
   triggerIngestion,
 } from './api';
 import type {
   ActivityInput,
+  ClusteringSummary,
   CreateLeadInput,
   Feedback,
   FeedbackInput,
@@ -35,6 +41,7 @@ import type {
   ListOpportunitiesParams,
   OpportunityStatus,
   OutreachDraft,
+  ServiceIdea,
   SkillInput,
   SkillPatchInput,
   SubmitInput,
@@ -71,6 +78,15 @@ export const queryKeys = {
     connectors: () => ['ingestion', 'connectors'] as const,
     runs: (params?: ListIngestionRunsParams) =>
       ['ingestion-runs', 'list', params ?? {}] as const,
+  },
+  clusters: {
+    all: () => ['problem-clusters'] as const,
+    list: (limit?: number) => ['problem-clusters', 'list', limit ?? null] as const,
+    detail: (id: string) => ['problem-clusters', 'detail', id] as const,
+  },
+  serviceIdeas: {
+    all: () => ['service-ideas'] as const,
+    list: () => ['service-ideas', 'list'] as const,
   },
 } as const;
 
@@ -147,6 +163,28 @@ export function useIngestionRuns(params: ListIngestionRunsParams = {}) {
   return useQuery({
     queryKey: queryKeys.ingestion.runs(params),
     queryFn: () => listIngestionRuns(params),
+  });
+}
+
+export function useClusters(limit?: number) {
+  return useQuery({
+    queryKey: queryKeys.clusters.list(limit),
+    queryFn: () => listClusters(limit),
+  });
+}
+
+export function useCluster(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.clusters.detail(id ?? ''),
+    queryFn: () => getCluster(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useServiceIdeas() {
+  return useQuery({
+    queryKey: queryKeys.serviceIdeas.list(),
+    queryFn: listServiceIdeas,
   });
 }
 
@@ -283,6 +321,30 @@ export function useGenerateDraft() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.opportunities.detail(opportunityId),
       });
+    },
+  });
+}
+
+export function useRebuildClusters() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (similarityThreshold?: number) => rebuildClusters(similarityThreshold),
+    onSuccess: (_data: ClusteringSummary) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.clusters.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+export function useGenerateServiceIdea() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (clusterId: string) => generateServiceIdeaForCluster(clusterId),
+    onSuccess: (_data: ServiceIdea, clusterId: string) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.clusters.detail(clusterId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.serviceIdeas.all() });
     },
   });
 }

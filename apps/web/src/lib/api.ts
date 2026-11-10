@@ -1,5 +1,6 @@
 import type {
   ActivityInput,
+  ClusteringSummary,
   CreateLeadInput,
   DailyDigest,
   DashboardSummary,
@@ -17,6 +18,9 @@ import type {
   OpportunityStatus,
   OutreachDraft,
   Pagination,
+  ProblemClusterDetail,
+  ProblemClusterRow,
+  ServiceIdea,
   Skill,
   SkillInput,
   SkillPatchInput,
@@ -313,5 +317,44 @@ export async function triggerIngestion(
     method: 'POST',
     body: JSON.stringify(body),
   });
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Problem intelligence
+// ---------------------------------------------------------------------------
+
+export async function listClusters(limit?: number): Promise<ProblemClusterRow[]> {
+  const qs = limit === undefined ? '' : `?limit=${encodeURIComponent(limit)}`;
+  const { data } = await apiFetch<{ data: ProblemClusterRow[] }>(`/api/problem-clusters${qs}`);
+  return data;
+}
+
+export async function getCluster(id: string): Promise<ProblemClusterDetail> {
+  const { data } = await apiFetch<{ data: ProblemClusterDetail }>(
+    `/api/problem-clusters/${encodeURIComponent(id)}`,
+  );
+  return data;
+}
+
+export async function rebuildClusters(similarityThreshold?: number): Promise<ClusteringSummary> {
+  const init: RequestInit =
+    similarityThreshold === undefined
+      ? { method: 'POST' }
+      : { method: 'POST', body: JSON.stringify({ similarityThreshold }) };
+  const { data } = await apiFetch<{ data: ClusteringSummary }>('/api/problem-clusters/rebuild', init);
+  return data;
+}
+
+export async function generateServiceIdeaForCluster(clusterId: string): Promise<ServiceIdea> {
+  const { data } = await apiFetch<{ data: ServiceIdea }>(
+    `/api/problem-clusters/${encodeURIComponent(clusterId)}/service-ideas`,
+    { method: 'POST' },
+  );
+  return data;
+}
+
+export async function listServiceIdeas(): Promise<ServiceIdea[]> {
+  const { data } = await apiFetch<{ data: ServiceIdea[] }>('/api/service-ideas');
   return data;
 }

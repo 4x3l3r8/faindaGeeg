@@ -362,3 +362,58 @@ export interface SkillPatchInput {
   category?: string;
   aliases?: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Problem intelligence
+// ---------------------------------------------------------------------------
+
+export interface ProblemClusterRow {
+  id: string;
+  title: string;
+  description: string | null;
+  targetAudience: string | null;
+  problemCategory: string | null;
+  memberCount: number;
+  independentSourceCount: number;
+  demandScore: number | string | null;
+  validationStatus: string;
+  firstObservedAt: string;
+  lastObservedAt: string;
+  createdAt: string;
+}
+
+export interface ClusterMemberView {
+  opportunityId: string;
+  title: string;
+  opportunityType: string;
+  similarity: number | string | null;
+  excerpt?: string | null;
+  sourceUrl?: string | null;
+}
+
+export interface ServiceIdea {
+  id: string;
+  clusterId: string | null;
+  clusterTitle?: string | null;
+  title: string;
+  summary: string;
+  targetCustomer: string | null;
+  suggestedService: string;
+  requiredSkills: string[];
+  engagementModel: string | null;
+  validationQuestions: string[];
+  nextAction: string | null;
+  createdAt: string;
+}
+
+export interface ProblemClusterDetail extends ProblemClusterRow {
+  members: ClusterMemberView[];
+  serviceIdeas: ServiceIdea[];
+}
+
+export interface ClusteringSummary {
+  opportunitiesEmbedded: number;
+  clustersCreated: number;
+  membersAdded: number;
+  clustersTouched: number;
+}
