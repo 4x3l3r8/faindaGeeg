@@ -2,6 +2,31 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Phase 2 ingestion engine completed
+
+### Completed
+
+- **Ingestion schema.** `ingestion_runs` table plus migration `0001` (`0001_third_master_chief`): run status, counts, error, a resumable cursor, and a source link. Indexed on source and creation time.
+- **Shared processing.** A single `processSourceRecord()` reused by both manual submission and ingestion, so extracted opportunities follow one code path.
+- **Connector interface.** `ISourceConnector` with `RawSourceRecord` / `IngestionBatch` / `IngestionCursor` types, giving the engine a uniform contract for sources.
+- **Hacker News connector.** Uses the public Algolia API — no auth, zero config.
+- **Reddit connector.** Uses the official OAuth application-only flow (`client_credentials`, read-only). Credentials come from env only (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `REDDIT_USER_AGENT`), never from source config.
+- **Run orchestration (in-process, no Redis).** Dedup by external id, cursor resume across runs, per-record error isolation, a `maxRecords` cap, and connector health via `last_successful_sync_at`.
+- **REST routes.** `GET/POST /api/ingestion/runs`, `GET /api/sources`, `GET /api/ingestion/connectors`.
+- **Sources page.** Feed health, a run trigger (connector picker + max records), and a recent-runs table.
+
+### Verified (2026-11-10)
+
+- Live Hacker News ingestion created scored opportunities from real posts.
+- The UI trigger worked end-to-end.
+- The cursor resumed across runs.
+- 26 Vitest tests pass, including Hacker News normalization and run dedup/idempotency.
+- Reddit needs credentials to run.
+
+### Next milestone
+
+Phase 3: outreach drafting and a daily opportunity digest (lead tracking core already shipped in Phase 1). Then Phase 4 (problem intelligence).
+
 ## 2026-11-10 — Phase 1 core opportunity management completed
 
 ### Completed

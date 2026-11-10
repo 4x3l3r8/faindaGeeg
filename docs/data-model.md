@@ -1,8 +1,8 @@
 # Data Model
 
-> **Phase 1.** The Phase 1 schema is implemented in Drizzle (`packages/db/src/schema`) and applied by migration `0000_known_tomas`. Ten tables exist today; remaining entities are deferred as noted below.
+> **Phase 1–2.** The Phase 1 schema is implemented in Drizzle (`packages/db/src/schema`) and applied by migration `0000_known_tomas`; the Phase 2 ingestion table is applied by migration `0001_third_master_chief`. Eleven tables exist today; remaining entities are deferred as noted below.
 
-## Implemented (Phase 1)
+## Implemented (Phase 1–2)
 
 | Entity | Table | Purpose and key relationships |
 | --- | --- | --- |
@@ -16,10 +16,10 @@
 | **ClientLeads** | `client_leads` | A tracked lead promoted from an Opportunity (one-to-one). Has many OutreachActivities. |
 | **OutreachActivities** | `outreach_activities` | A recorded outreach or follow-up action for a ClientLead. |
 | **OpportunityFeedback** | `opportunity_feedback` | Relevance, rating, and notes feedback for an Opportunity. |
+| **IngestionRuns** | `ingestion_runs` | Ingestion run tracking — status, counts, error, a resumable cursor, and a source link. Belongs to a Source. |
 
 ## Deferred
 
 | Entity | Deferred to |
 | --- | --- |
 | **ProblemClusters**, **ClusterMembers**, **ServiceIdeas** | Phase 4 (problem intelligence and clustering). |
-| **Dedicated ingestion-run tables** | Phase 2 (ingestion engine). |

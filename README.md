@@ -77,6 +77,28 @@ curl -X POST http://localhost:3001/api/opportunities/submit \
 
 The pipeline deduplicates by content hash, extracts a schema-validated opportunity, matches it against your skills, scores it, and links the supporting evidence. Irrelevant content and extraction failures are recorded but do not create an opportunity.
 
+## Sources & ingestion
+
+Ingestion pulls permitted public sources through connectors and processes each record with the same pipeline as manual submission. Dedup is by external id, runs resume from a saved cursor, per-record errors are isolated, and a `maxRecords` cap limits each run.
+
+Hacker News works with **no configuration** — it uses the public Algolia API. Trigger a run from the **Sources** page (connector picker + max records) or via the API:
+
+```bash
+curl -X POST http://localhost:3001/api/ingestion/runs \
+  -H 'content-type: application/json' \
+  -d '{"sourceName":"hackernews","maxRecords":25}'
+```
+
+The body is `{ sourceName?, maxRecords? }` (`sourceName` defaults to the configured source, `maxRecords` defaults to 25).
+
+To enable **Reddit**, register an app at https://www.reddit.com/prefs/apps (script/web type) and set the following in `.env`:
+
+- `REDDIT_CLIENT_ID`
+- `REDDIT_CLIENT_SECRET`
+- `REDDIT_USER_AGENT`
+
+The connector uses the official OAuth application-only flow (`client_credentials`, read-only). Credentials are read from the environment only and are never stored in source config.
+
 ## API endpoints
 
 All under `/api` (see `/docs` for the OpenAPI spec):
@@ -88,6 +110,9 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET/POST /leads`, `GET/PATCH /leads/:id`, `POST /leads/:id/activities` — lead tracking and outreach activities.
 - `GET /skills`, `POST /skills`, `PATCH /skills/:id` — manage the skills profile.
 - `GET /dashboard/summary` — totals and breakdowns.
+- `GET/POST /ingestion/runs` — list recent runs / trigger a run (`{ sourceName?, maxRecords? }`).
+- `GET /sources` — list configured ingestion sources.
+- `GET /ingestion/connectors` — list available connectors.
 
 ## Running tests
 
