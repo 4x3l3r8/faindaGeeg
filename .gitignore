@@ -31,3 +31,4 @@ Desktop.ini
 .idea/
 .vscode/
 *.swp
+.playwright-mcp/
