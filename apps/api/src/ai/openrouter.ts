@@ -1,11 +1,11 @@
-import type { AiProvider, GenerateJsonArgs } from './provider.js';
+import type { AiProvider, GenerateJsonArgs, GenerateTextArgs } from './provider.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
 interface OpenRouterRequestBody {
   model: string;
   messages: Array<{ role: 'system' | 'user'; content: string }>;
-  response_format: { type: 'json_object' };
+  response_format?: { type: 'json_object' };
   temperature: number;
   max_tokens?: number;
 }
@@ -38,6 +38,27 @@ export class OpenRouterProvider implements AiProvider {
       body.max_tokens = args.maxTokens;
     }
 
+    return this.request(body);
+  }
+
+  async generateText(args: GenerateTextArgs): Promise<string> {
+    const body: OpenRouterRequestBody = {
+      model: this.model,
+      messages: [
+        { role: 'system', content: args.system },
+        { role: 'user', content: args.user },
+      ],
+      temperature: 0.4,
+    };
+
+    if (args.maxTokens !== undefined) {
+      body.max_tokens = args.maxTokens;
+    }
+
+    return this.request(body);
+  }
+
+  private async request(body: OpenRouterRequestBody): Promise<string> {
     const response = await fetch(OPENROUTER_ENDPOINT, {
       method: 'POST',
       headers: {

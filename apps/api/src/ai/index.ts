@@ -20,6 +20,18 @@ export { extractOpportunity, ExtractionValidationError } from './extract.js';
 export type { ExtractionOutcome } from './extract.js';
 export { buildExtractionPrompt, EXTRACTION_PROMPT_VERSION } from './prompts.js';
 export type { ExtractionPrompt, ExtractionPromptRecord } from './prompts.js';
-export type { AiProvider, AiProviderName, GenerateJsonArgs } from './provider.js';
+export {
+  buildOutreachPrompt,
+  generateOutreachDraft,
+  OUTREACH_PROMPT_VERSION,
+  PROFILE_SUMMARY,
+} from './outreach.js';
+export type { OutreachDraft, OutreachPrompt, OutreachPromptInput } from './outreach.js';
+export type {
+  AiProvider,
+  AiProviderName,
+  GenerateJsonArgs,
+  GenerateTextArgs,
+} from './provider.js';
 export { MockProvider } from './mock.js';
 export { OpenRouterProvider } from './openrouter.js';

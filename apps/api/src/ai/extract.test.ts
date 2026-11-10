@@ -31,6 +31,10 @@ class StubProvider implements AiProvider {
   async generateJson(): Promise<string> {
     return this.response;
   }
+
+  async generateText(): Promise<string> {
+    return this.response;
+  }
 }
 
 describe('extractionResultSchema', () => {

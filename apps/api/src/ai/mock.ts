@@ -1,5 +1,5 @@
 import type { ExtractionResult } from '../shared/index.js';
-import type { AiProvider, GenerateJsonArgs } from './provider.js';
+import type { AiProvider, GenerateJsonArgs, GenerateTextArgs } from './provider.js';
 
 const GIG_PATTERN = /hire|looking for a developer|freelanc/i;
 const PROBLEM_PATTERN = /bug|slow|manual|spreadsheet/i;
@@ -62,6 +62,12 @@ function firstExcerpt(text: string): string {
   return condensed.slice(0, 160);
 }
 
+function readLabeledField(user: string, label: string): string {
+  const pattern = new RegExp(`^${label}:\\s*(.*)$`, 'm');
+  const match = pattern.exec(user);
+  return match ? (match[1] ?? '').trim() : '';
+}
+
 export class MockProvider implements AiProvider {
   async generateJson(args: GenerateJsonArgs): Promise<string> {
     const { title: parsedTitle, content } = extractRecord(args.user);
@@ -111,5 +117,42 @@ export class MockProvider implements AiProvider {
     };
 
     return JSON.stringify(result);
+  }
+
+  async generateText(args: GenerateTextArgs): Promise<string> {
+    const title = readLabeledField(args.user, 'Title');
+    const opportunityType = readLabeledField(args.user, 'Opportunity type');
+    const skillsField = readLabeledField(args.user, 'Matched skills');
+
+    const skills = skillsField
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter((skill) => skill.length > 0 && skill.toLowerCase() !== 'none identified');
+
+    const highlighted = skills.slice(0, 2);
+    const skillsSentence =
+      highlighted.length > 0
+        ? `My background in ${highlighted.join(' and ')} looks like a good fit for this work.`
+        : 'My full-stack background in TypeScript, React, and Node.js looks like a good fit for this work.';
+
+    const subject =
+      title.length > 0
+        ? title
+        : opportunityType.length > 0
+          ? `your ${opportunityType.replace(/_/g, ' ')} opportunity`
+          : 'your opportunity';
+
+    const lines = [
+      'Hi there,',
+      '',
+      `I came across "${subject}" and wanted to reach out.`,
+      skillsSentence,
+      'Could you share a little more about the current state of the project and what a first milestone would look like?',
+      '',
+      'Best regards,',
+      '[your name]',
+    ];
+
+    return lines.join('\n');
   }
 }
