@@ -15,6 +15,13 @@
       "when": 1794311758822,
       "tag": "0001_third_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794314985766,
+      "tag": "0002_faithful_namor",
+      "breakpoints": true
     }
   ]
 }

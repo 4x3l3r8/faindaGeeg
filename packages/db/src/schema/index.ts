@@ -12,6 +12,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  vector,
 } from 'drizzle-orm/pg-core';
 
 export const opportunityTypeEnum = pgEnum('opportunity_type', ['gig', 'problem', 'product_gap']);
@@ -148,6 +149,7 @@ export const opportunities = pgTable(
     firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    embedding: vector('embedding', { dimensions: 256 }),
   },
   (table) => [
     index('opportunities_status_idx').on(table.status),
@@ -259,6 +261,67 @@ export const opportunityFeedback = pgTable('opportunity_feedback', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const clusterValidationStatusEnum = pgEnum('cluster_validation_status', [
+  'unvalidated',
+  'investigating',
+  'validated',
+  'rejected',
+]);
+
+export const problemClusters = pgTable('problem_clusters', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  description: text('description'),
+  targetAudience: text('target_audience'),
+  problemCategory: text('problem_category'),
+  centroid: vector('centroid', { dimensions: 256 }),
+  memberCount: integer('member_count').notNull().default(0),
+  independentSourceCount: integer('independent_source_count').notNull().default(0),
+  demandScore: numeric('demand_score'),
+  validationStatus: clusterValidationStatusEnum('validation_status').notNull().default('unvalidated'),
+  firstObservedAt: timestamp('first_observed_at', { withTimezone: true }).notNull().defaultNow(),
+  lastObservedAt: timestamp('last_observed_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const clusterMembers = pgTable(
+  'cluster_members',
+  {
+    clusterId: uuid('cluster_id')
+      .notNull()
+      .references(() => problemClusters.id, { onDelete: 'cascade' }),
+    opportunityId: uuid('opportunity_id')
+      .notNull()
+      .references(() => opportunities.id, { onDelete: 'cascade' }),
+    similarity: numeric('similarity'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.clusterId, table.opportunityId] }),
+    index('cluster_members_opportunity_id_idx').on(table.opportunityId),
+  ],
+);
+
+export const serviceIdeas = pgTable('service_ideas', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  clusterId: uuid('cluster_id').references(() => problemClusters.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  targetCustomer: text('target_customer'),
+  suggestedService: text('suggested_service').notNull(),
+  requiredSkills: text('required_skills')
+    .array()
+    .notNull()
+    .default(sql`'{}'`),
+  engagementModel: text('engagement_model'),
+  validationQuestions: text('validation_questions')
+    .array()
+    .notNull()
+    .default(sql`'{}'`),
+  nextAction: text('next_action'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const sourcesRelations = relations(sources, ({ many }) => ({
   sourceRecords: many(sourceRecords),
   ingestionRuns: many(ingestionRuns),
@@ -338,6 +401,29 @@ export const opportunityFeedbackRelations = relations(opportunityFeedback, ({ on
   }),
 }));
 
+export const problemClustersRelations = relations(problemClusters, ({ many }) => ({
+  clusterMembers: many(clusterMembers),
+  serviceIdeas: many(serviceIdeas),
+}));
+
+export const clusterMembersRelations = relations(clusterMembers, ({ one }) => ({
+  cluster: one(problemClusters, {
+    fields: [clusterMembers.clusterId],
+    references: [problemClusters.id],
+  }),
+  opportunity: one(opportunities, {
+    fields: [clusterMembers.opportunityId],
+    references: [opportunities.id],
+  }),
+}));
+
+export const serviceIdeasRelations = relations(serviceIdeas, ({ one }) => ({
+  cluster: one(problemClusters, {
+    fields: [serviceIdeas.clusterId],
+    references: [problemClusters.id],
+  }),
+}));
+
 export const ingestionRunsRelations = relations(ingestionRuns, ({ one }) => ({
   source: one(sources, {
     fields: [ingestionRuns.sourceId],
@@ -357,6 +443,9 @@ export const schema = {
   outreachActivities,
   opportunityFeedback,
   ingestionRuns,
+  problemClusters,
+  clusterMembers,
+  serviceIdeas,
   sourcesRelations,
   sourceRecordsRelations,
   opportunitiesRelations,
@@ -368,4 +457,7 @@ export const schema = {
   outreachActivitiesRelations,
   opportunityFeedbackRelations,
   ingestionRunsRelations,
+  problemClustersRelations,
+  clusterMembersRelations,
+  serviceIdeasRelations,
 };
