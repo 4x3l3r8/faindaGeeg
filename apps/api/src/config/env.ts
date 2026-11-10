@@ -50,6 +50,11 @@ const envSchema = z.object({
   REDDIT_USER_AGENT: optionalString,
   GOOGLE_SHEETS_CSV_URL: optionalString,
   INGEST_WEBHOOK_SECRET: optionalString,
+  STACKEXCHANGE_SITE: optionalString,
+  STACKEXCHANGE_TAGS: optionalString,
+  STACKEXCHANGE_KEY: optionalString,
+  REMOTIVE_CATEGORY: optionalString,
+  REMOTIVE_SEARCH: optionalString,
 });
 
 const parsed = envSchema.safeParse(process.env);
