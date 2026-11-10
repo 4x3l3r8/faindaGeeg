@@ -12,6 +12,7 @@ import {
 import { env } from './config/env.js';
 import dashboardRoutes from './modules/dashboard/routes.js';
 import healthRoutes from './modules/health/routes.js';
+import ingestionRoutes from './modules/ingestion/routes.js';
 import leadsRoutes from './modules/leads/routes.js';
 import opportunitiesRoutes from './modules/opportunities/routes.js';
 import skillsRoutes from './modules/skills/routes.js';
@@ -62,6 +63,8 @@ export async function buildApp() {
         { name: 'leads', description: 'Client lead tracking and outreach activities' },
         { name: 'skills', description: 'Skills profile management' },
         { name: 'dashboard', description: 'Aggregated dashboard metrics' },
+        { name: 'ingestion', description: 'Ingestion runs and source connectors' },
+        { name: 'sources', description: 'Configured ingestion sources' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -105,6 +108,7 @@ export async function buildApp() {
   await app.register(leadsRoutes, { prefix: '/api' });
   await app.register(skillsRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
+  await app.register(ingestionRoutes, { prefix: '/api' });
 
   return app;
 }
