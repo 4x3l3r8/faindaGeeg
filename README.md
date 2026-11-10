@@ -63,8 +63,10 @@ Copy `env.example` to `.env`. Key variables:
 - `WEB_PORT`, `VITE_API_BASE_URL` — web dev server and API base URL.
 - `AI_PROVIDER` — `openrouter` (default) or `mock`.
 - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` — required when `AI_PROVIDER=openrouter`. Set `AI_PROVIDER=mock` (or leave the key blank) to run fully offline with a deterministic mock extractor — handy for dev and demos, no API cost.
-- `EMBEDDINGS_PROVIDER` — embeddings backend for problem clustering. Blank (default) or `local` uses the built-in deterministic local embedder (no key, fully offline). Set to `openai` **and** provide `OPENAI_API_KEY` to use OpenAI `text-embedding-3-small` (256 dimensions) for higher-quality embeddings.
-- `OPENAI_API_KEY` — required only when `EMBEDDINGS_PROVIDER=openai`.
+- `EMBEDDINGS_PROVIDER` — embeddings backend for problem clustering: `local` (default), `openai`, or `huggingface`. See [Embeddings providers](#embeddings-providers).
+- `EMBEDDING_DIM` — optional vector dimension for the local embedder (default 256) and, for OpenAI, an optional output truncation. Leaving it blank uses the provider/model default.
+- `OPENAI_API_KEY` — required only when `EMBEDDINGS_PROVIDER=openai`; `OPENAI_EMBEDDINGS_MODEL` (default `text-embedding-3-small`).
+- `HF_API_KEY` — required only when `EMBEDDINGS_PROVIDER=huggingface`; `HF_EMBEDDINGS_MODEL` (default `BAAI/bge-small-en-v1.5`).
 
 ## Submitting an opportunity
 
@@ -112,7 +114,21 @@ curl -X POST http://localhost:3001/api/problem-clusters/rebuild \
 
 Clusters group recurring problems and expose an independent-source count and a demand score. Open a cluster to see its evidence and members, then generate a draft service idea from it (`POST /api/problem-clusters/:id/service-ideas`). Service ideas are grounded hypotheses drawn from the evidence — drafts to validate, never proven demand.
 
-Embeddings default to the built-in local embedder (no key). For higher-quality semantic clustering, set `EMBEDDINGS_PROVIDER=openai` and `OPENAI_API_KEY` in `.env` to use OpenAI `text-embedding-3-small` (256 dimensions).
+Embeddings default to the built-in local embedder (no key). For higher-quality semantic clustering, set `EMBEDDINGS_PROVIDER=openai` and `OPENAI_API_KEY` in `.env` (or `huggingface` with `HF_API_KEY`).
+
+### Embeddings providers
+
+Embeddings are **provider-agnostic**, selected by `EMBEDDINGS_PROVIDER`:
+
+- `local` (default) — a built-in deterministic hashing embedder. No API key, fully offline. Its similarity is approximate; use it for dev and key-less operation.
+- `openai` — requires `OPENAI_API_KEY`. Optional `OPENAI_EMBEDDINGS_MODEL` (default `text-embedding-3-small`); `EMBEDDING_DIM` optionally reduces the output dimensions (OpenAI `text-embedding-3-*` support truncation).
+- `huggingface` (or `hf`) — requires `HF_API_KEY` (`HF_EMBEDDINGS_MODEL`, default `BAAI/bge-small-en-v1.5`). The HuggingFace Inference API has a free tier.
+
+A missing cloud key falls back to the local embedder.
+
+The database embedding columns are **dimension-agnostic**, so any model's output size works.
+
+Different providers/models produce different-dimension vectors that cannot be compared, so **switching the provider or model requires a one-time re-embed**: `POST /api/problem-clusters/rebuild {"reembed": true}` (or the Rebuild action on the **Problem Intelligence** page). This clears existing embeddings and clusters and rebuilds them with the current embedder.
 
 ## API endpoints
 
@@ -132,7 +148,7 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET /ingestion/connectors` — list available connectors.
 - `GET /problem-clusters` — list problem clusters by demand score.
 - `GET /problem-clusters/:id` — cluster detail with evidence, members, and service ideas.
-- `POST /problem-clusters/rebuild` — run an in-process clustering pass (`{ similarityThreshold? }`).
+- `POST /problem-clusters/rebuild` — run an in-process clustering pass (`{ similarityThreshold?, reembed? }`); `reembed: true` clears embeddings and clusters first.
 - `POST /problem-clusters/:id/service-ideas` — generate and save a draft service idea from a cluster.
 - `GET /service-ideas` — list generated service ideas.
 
