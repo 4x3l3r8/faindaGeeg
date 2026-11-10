@@ -7,28 +7,35 @@ import {
   getDashboardSummary,
   getLead,
   getOpportunity,
+  listConnectors,
+  listIngestionRuns,
   listLeads,
   listOpportunities,
   listSkills,
+  listSources,
   patchLead,
   patchOpportunityStatus,
   patchSkill,
   postFeedback,
   submitOpportunity,
+  triggerIngestion,
 } from './api';
 import type {
   ActivityInput,
   CreateLeadInput,
   Feedback,
   FeedbackInput,
+  IngestionRunSummary,
   Lead,
   LeadActivity,
   LeadPatchInput,
+  ListIngestionRunsParams,
   ListOpportunitiesParams,
   OpportunityStatus,
   SkillInput,
   SkillPatchInput,
   SubmitInput,
+  TriggerIngestionInput,
 } from './types';
 
 /**
@@ -50,6 +57,16 @@ export const queryKeys = {
   skills: {
     all: () => ['skills'] as const,
     list: () => ['skills', 'list'] as const,
+  },
+  sources: {
+    all: () => ['sources'] as const,
+    list: () => ['sources', 'list'] as const,
+  },
+  ingestion: {
+    all: () => ['ingestion-runs'] as const,
+    connectors: () => ['ingestion', 'connectors'] as const,
+    runs: (params?: ListIngestionRunsParams) =>
+      ['ingestion-runs', 'list', params ?? {}] as const,
   },
 } as const;
 
@@ -98,6 +115,27 @@ export function useSkills() {
   return useQuery({
     queryKey: queryKeys.skills.list(),
     queryFn: listSkills,
+  });
+}
+
+export function useSources() {
+  return useQuery({
+    queryKey: queryKeys.sources.list(),
+    queryFn: listSources,
+  });
+}
+
+export function useConnectors() {
+  return useQuery({
+    queryKey: queryKeys.ingestion.connectors(),
+    queryFn: listConnectors,
+  });
+}
+
+export function useIngestionRuns(params: ListIngestionRunsParams = {}) {
+  return useQuery({
+    queryKey: queryKeys.ingestion.runs(params),
+    queryFn: () => listIngestionRuns(params),
   });
 }
 
@@ -207,6 +245,20 @@ export function usePatchSkill() {
       patchSkill(variables.id, variables.patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.skills.all() });
+    },
+  });
+}
+
+export function useTriggerIngestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: TriggerIngestionInput = {}) => triggerIngestion(input),
+    onSuccess: (_data: IngestionRunSummary) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ingestion.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sources.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
     },
   });
 }

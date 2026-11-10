@@ -25,6 +25,19 @@ export type OpportunityStatus =
 
 export type EvidenceType = 'quote' | 'summary' | 'link' | 'other';
 
+export type SourceType =
+  | 'reddit'
+  | 'x'
+  | 'facebook'
+  | 'instagram'
+  | 'github'
+  | 'job_board'
+  | 'review'
+  | 'manual'
+  | 'other';
+
+export type IngestionStatus = 'pending' | 'running' | 'success' | 'failed' | 'partial';
+
 export type OutreachActivityType =
   | 'note'
   | 'draft'
@@ -212,6 +225,49 @@ export type SubmitResult =
   | { status: 'duplicate'; sourceRecordId: string; opportunityId: string | null }
   | { status: 'irrelevant'; sourceRecordId: string }
   | { status: 'needs_review'; sourceRecordId: string; reason: string };
+
+export interface Source {
+  id: string;
+  name: string;
+  sourceType: SourceType;
+  isEnabled: boolean;
+  lastSuccessfulSyncAt: string | null;
+  createdAt: string;
+}
+
+export interface IngestionRun {
+  id: string;
+  sourceId: string | null;
+  status: IngestionStatus;
+  startedAt: string | null;
+  finishedAt: string | null;
+  recordsFetched: number;
+  recordsNew: number;
+  recordsProcessed: number;
+  opportunitiesCreated: number;
+  error: string | null;
+  createdAt: string;
+}
+
+export interface IngestionRunSummary {
+  runId: string;
+  status: IngestionStatus;
+  recordsFetched: number;
+  recordsNew: number;
+  recordsProcessed: number;
+  opportunitiesCreated: number;
+  error: string | null;
+}
+
+export interface TriggerIngestionInput {
+  sourceName?: string;
+  maxRecords?: number;
+}
+
+export interface ListIngestionRunsParams {
+  sourceId?: string;
+  limit?: number;
+}
 
 // ---------------------------------------------------------------------------
 // Request payloads

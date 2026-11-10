@@ -4,9 +4,12 @@ import type {
   DashboardSummary,
   Feedback,
   FeedbackInput,
+  IngestionRun,
+  IngestionRunSummary,
   Lead,
   LeadActivity,
   LeadPatchInput,
+  ListIngestionRunsParams,
   ListOpportunitiesParams,
   OpportunityDetail,
   OpportunityRow,
@@ -15,8 +18,10 @@ import type {
   Skill,
   SkillInput,
   SkillPatchInput,
+  Source,
   SubmitInput,
   SubmitResult,
+  TriggerIngestionInput,
 } from './types';
 
 // Base URL for the Fastify API. Falls back to the local default when
@@ -254,5 +259,43 @@ export async function patchSkill(id: string, patch: SkillPatchInput): Promise<Sk
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const { data } = await apiFetch<{ data: DashboardSummary }>('/api/dashboard/summary');
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// Sources & ingestion
+// ---------------------------------------------------------------------------
+
+export async function listSources(): Promise<Source[]> {
+  const { data } = await apiFetch<{ data: Source[] }>('/api/sources');
+  return data;
+}
+
+export async function listConnectors(): Promise<string[]> {
+  const { data } = await apiFetch<{ data: string[] }>('/api/ingestion/connectors');
+  return data;
+}
+
+export async function listIngestionRuns(
+  params: ListIngestionRunsParams = {},
+): Promise<IngestionRun[]> {
+  const query = new URLSearchParams();
+  if (params.sourceId !== undefined) query.set('sourceId', params.sourceId);
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  const qs = query.toString();
+
+  const { data } = await apiFetch<{ data: IngestionRun[] }>(
+    `/api/ingestion/runs${qs.length > 0 ? `?${qs}` : ''}`,
+  );
+  return data;
+}
+
+export async function triggerIngestion(
+  body: TriggerIngestionInput = {},
+): Promise<IngestionRunSummary> {
+  const { data } = await apiFetch<{ data: IngestionRunSummary }>('/api/ingestion/runs', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
   return data;
 }
