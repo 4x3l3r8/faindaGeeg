@@ -63,6 +63,14 @@ export const outreachActivityTypeEnum = pgEnum('outreach_activity_type', [
   'other',
 ]);
 
+export const ingestionStatusEnum = pgEnum('ingestion_status', [
+  'pending',
+  'running',
+  'success',
+  'failed',
+  'partial',
+]);
+
 export const sources = pgTable('sources', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -95,6 +103,28 @@ export const sourceRecords = pgTable(
   (table) => [
     uniqueIndex('source_records_source_id_external_id_unique').on(table.sourceId, table.externalId),
     index('source_records_content_hash_idx').on(table.contentHash),
+  ],
+);
+
+export const ingestionRuns = pgTable(
+  'ingestion_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sourceId: uuid('source_id').references(() => sources.id),
+    status: ingestionStatusEnum('status').notNull().default('pending'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    recordsFetched: integer('records_fetched').notNull().default(0),
+    recordsNew: integer('records_new').notNull().default(0),
+    recordsProcessed: integer('records_processed').notNull().default(0),
+    opportunitiesCreated: integer('opportunities_created').notNull().default(0),
+    error: text('error'),
+    cursor: jsonb('cursor'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('ingestion_runs_source_id_idx').on(table.sourceId),
+    index('ingestion_runs_created_at_idx').on(table.createdAt),
   ],
 );
 
@@ -231,6 +261,7 @@ export const opportunityFeedback = pgTable('opportunity_feedback', {
 
 export const sourcesRelations = relations(sources, ({ many }) => ({
   sourceRecords: many(sourceRecords),
+  ingestionRuns: many(ingestionRuns),
 }));
 
 export const sourceRecordsRelations = relations(sourceRecords, ({ one, many }) => ({
@@ -307,6 +338,13 @@ export const opportunityFeedbackRelations = relations(opportunityFeedback, ({ on
   }),
 }));
 
+export const ingestionRunsRelations = relations(ingestionRuns, ({ one }) => ({
+  source: one(sources, {
+    fields: [ingestionRuns.sourceId],
+    references: [sources.id],
+  }),
+}));
+
 export const schema = {
   sources,
   sourceRecords,
@@ -318,6 +356,7 @@ export const schema = {
   clientLeads,
   outreachActivities,
   opportunityFeedback,
+  ingestionRuns,
   sourcesRelations,
   sourceRecordsRelations,
   opportunitiesRelations,
@@ -328,4 +367,5 @@ export const schema = {
   clientLeadsRelations,
   outreachActivitiesRelations,
   opportunityFeedbackRelations,
+  ingestionRunsRelations,
 };

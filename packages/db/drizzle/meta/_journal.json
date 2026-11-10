@@ -8,6 +8,13 @@
       "when": 1794265576477,
       "tag": "0000_known_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794311758822,
+      "tag": "0001_third_master_chief",
+      "breakpoints": true
     }
   ]
 }
