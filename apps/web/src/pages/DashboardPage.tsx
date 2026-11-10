@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { ApiStatus } from '@/components/ApiStatus';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useDashboard } from '@/lib/hooks';
+import { useDashboard, useDigest } from '@/lib/hooks';
 import { scoreBand } from '@/lib/score';
-import type { DashboardSummary, OpportunityType } from '@/lib/types';
+import type { DailyDigest, DashboardSummary, OpportunityType } from '@/lib/types';
 
 const TYPE_LABELS: Record<OpportunityType, string> = {
   gig: 'Gig',
@@ -20,6 +20,11 @@ function formatLabel(value: string): string {
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function StatCard({ label, value }: { label: string; value: number }) {
@@ -139,6 +144,137 @@ function DashboardContent({ data }: { data: DashboardSummary }) {
   );
 }
 
+function DigestContent({ data }: { data: DailyDigest }) {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">New</p>
+          <p className="text-2xl font-semibold tabular-nums">{data.counts.newOpportunities}</p>
+        </div>
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            High priority
+          </p>
+          <p className="text-2xl font-semibold tabular-nums">{data.counts.highPriority}</p>
+        </div>
+        <div className="rounded-md border border-border p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Follow-ups
+          </p>
+          <p className="text-2xl font-semibold tabular-nums">{data.counts.followUpsDue}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          New opportunities
+        </p>
+        {data.newOpportunities.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No new opportunities</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.newOpportunities.map((item) => {
+              const band = scoreBand(item.totalScore);
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={`/opportunities/${item.id}`}
+                    className="flex items-center justify-between gap-4 rounded-md border border-border p-3 transition-colors hover:bg-accent"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
+                    </div>
+                    <Badge className={`${band.className} shrink-0`}>{band.label}</Badge>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          High priority
+        </p>
+        {data.highPriority.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No high-priority opportunities</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.highPriority.map((item) => {
+              const band = scoreBand(item.totalScore);
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={`/opportunities/${item.id}`}
+                    className="flex items-center justify-between gap-4 rounded-md border border-border p-3 transition-colors hover:bg-accent"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatLabel(item.status)}</p>
+                    </div>
+                    <Badge className={`${band.className} shrink-0`}>{band.label}</Badge>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Follow-ups due
+        </p>
+        {data.followUpsDue.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing due</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.followUpsDue.map((item) => (
+              <li key={item.leadId}>
+                <Link
+                  to="/leads"
+                  className="flex items-center justify-between gap-4 rounded-md border border-border p-3 transition-colors hover:bg-accent"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">{formatLabel(item.status)}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatDateTime(item.nextActionAt)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DigestCard() {
+  const { data, isPending, isError } = useDigest();
+
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base">Today's digest</CardTitle>
+        <CardDescription>
+          New and high-priority opportunities, plus leads with follow-ups due.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        {isPending ? <p className="text-sm text-muted-foreground">Loading digest…</p> : null}
+        {isError ? <p className="text-sm text-destructive">Failed to load the digest.</p> : null}
+        {data ? <DigestContent data={data} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DashboardPage() {
   const { data, isPending, isError, error } = useDashboard();
 
@@ -171,6 +307,8 @@ export function DashboardPage() {
       ) : null}
 
       {data ? <DashboardContent data={data} /> : null}
+
+      <DigestCard />
     </div>
   );
 }

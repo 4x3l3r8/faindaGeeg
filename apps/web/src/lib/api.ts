@@ -1,6 +1,7 @@
 import type {
   ActivityInput,
   CreateLeadInput,
+  DailyDigest,
   DashboardSummary,
   Feedback,
   FeedbackInput,
@@ -14,6 +15,7 @@ import type {
   OpportunityDetail,
   OpportunityRow,
   OpportunityStatus,
+  OutreachDraft,
   Pagination,
   Skill,
   SkillInput,
@@ -186,6 +188,14 @@ export async function postFeedback(id: string, input: FeedbackInput): Promise<Fe
   return data;
 }
 
+export async function generateOutreachDraft(opportunityId: string): Promise<OutreachDraft> {
+  const { data } = await apiFetch<{ data: OutreachDraft }>(
+    `/api/opportunities/${encodeURIComponent(opportunityId)}/outreach-drafts`,
+    { method: 'POST' },
+  );
+  return data;
+}
+
 // ---------------------------------------------------------------------------
 // Leads
 // ---------------------------------------------------------------------------
@@ -259,6 +269,12 @@ export async function patchSkill(id: string, patch: SkillPatchInput): Promise<Sk
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const { data } = await apiFetch<{ data: DashboardSummary }>('/api/dashboard/summary');
+  return data;
+}
+
+export async function getDigest(sinceHours?: number): Promise<DailyDigest> {
+  const qs = sinceHours === undefined ? '' : `?sinceHours=${encodeURIComponent(sinceHours)}`;
+  const { data } = await apiFetch<{ data: DailyDigest }>(`/api/dashboard/digest${qs}`);
   return data;
 }
 

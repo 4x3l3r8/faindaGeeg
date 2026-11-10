@@ -4,7 +4,9 @@ import {
   addLeadActivity,
   createLead,
   createSkill,
+  generateOutreachDraft,
   getDashboardSummary,
+  getDigest,
   getLead,
   getOpportunity,
   listConnectors,
@@ -32,6 +34,7 @@ import type {
   ListIngestionRunsParams,
   ListOpportunitiesParams,
   OpportunityStatus,
+  OutreachDraft,
   SkillInput,
   SkillPatchInput,
   SubmitInput,
@@ -44,6 +47,7 @@ import type {
  */
 export const queryKeys = {
   dashboard: () => ['dashboard'] as const,
+  digest: (sinceHours?: number) => ['dashboard', 'digest', sinceHours ?? null] as const,
   opportunities: {
     all: () => ['opportunities'] as const,
     list: (params?: ListOpportunitiesParams) => ['opportunities', 'list', params ?? {}] as const,
@@ -78,6 +82,13 @@ export function useDashboard() {
   return useQuery({
     queryKey: queryKeys.dashboard(),
     queryFn: getDashboardSummary,
+  });
+}
+
+export function useDigest(sinceHours?: number) {
+  return useQuery({
+    queryKey: queryKeys.digest(sinceHours),
+    queryFn: () => getDigest(sinceHours),
   });
 }
 
@@ -259,6 +270,19 @@ export function useTriggerIngestion() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sources.all() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.opportunities.all() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+export function useGenerateDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (opportunityId: string) => generateOutreachDraft(opportunityId),
+    onSuccess: (_data: OutreachDraft, opportunityId: string) => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.opportunities.detail(opportunityId),
+      });
     },
   });
 }

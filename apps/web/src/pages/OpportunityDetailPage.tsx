@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   useCreateLead,
+  useGenerateDraft,
   useOpportunity,
   useSendFeedback,
   useSetOpportunityStatus,
@@ -322,6 +323,74 @@ function EvidenceList({ evidence }: { evidence: EvidenceItem[] }) {
   );
 }
 
+function OutreachDraftCard({ opportunityId }: { opportunityId: string }) {
+  const draftMutation = useGenerateDraft();
+  const [draftText, setDraftText] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const result = draftMutation.data;
+
+  useEffect(() => {
+    if (result !== undefined) {
+      setDraftText(result.draft);
+      setCopied(false);
+    }
+  }, [result]);
+
+  async function handleCopy() {
+    if (typeof navigator === 'undefined' || navigator.clipboard === undefined) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(draftText);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base">Outreach draft</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 p-4 pt-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={draftMutation.isPending}
+            onClick={() => draftMutation.mutate(opportunityId)}
+          >
+            {draftMutation.isPending ? 'Generating…' : 'Generate draft'}
+          </Button>
+          {result !== undefined ? (
+            <Button variant="outline" size="sm" onClick={handleCopy}>
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          ) : null}
+        </div>
+
+        {draftMutation.isError ? (
+          <p className="text-sm text-destructive">{errorMessage(draftMutation.error)}</p>
+        ) : null}
+
+        {result !== undefined ? (
+          <textarea
+            className="min-h-[160px] w-full resize-y rounded-md border border-input bg-background p-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={draftText}
+            onChange={(event) => setDraftText(event.target.value)}
+          />
+        ) : null}
+
+        <p className="text-xs text-muted-foreground">
+          Draft only — review and send it yourself; the system never contacts anyone.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -415,6 +484,8 @@ export function OpportunityDetailPage() {
       <SkillsCard skills={opportunity.skills} />
 
       <EvidenceList evidence={opportunity.evidence} />
+
+      <OutreachDraftCard opportunityId={opportunity.id} />
 
       <Card>
         <CardHeader className="p-4 pb-2">

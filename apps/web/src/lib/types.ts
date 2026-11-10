@@ -220,6 +220,42 @@ export interface DashboardSummary {
   }>;
 }
 
+export interface OutreachDraft {
+  draft: string;
+  promptVersion: string;
+}
+
+export interface DailyDigest {
+  generatedAt: string;
+  sinceHours: number;
+  counts: {
+    newOpportunities: number;
+    highPriority: number;
+    followUpsDue: number;
+  };
+  newOpportunities: Array<{
+    id: string;
+    title: string;
+    opportunityType: OpportunityType;
+    createdAt: string;
+    totalScore: number | null;
+  }>;
+  highPriority: Array<{
+    id: string;
+    title: string;
+    opportunityType: OpportunityType;
+    status: OpportunityStatus;
+    totalScore: number | null;
+  }>;
+  followUpsDue: Array<{
+    leadId: string;
+    opportunityId: string;
+    title: string;
+    status: OpportunityStatus;
+    nextActionAt: string;
+  }>;
+}
+
 export type SubmitResult =
   | { status: 'created'; opportunityId: string; totalScore: number }
   | { status: 'duplicate'; sourceRecordId: string; opportunityId: string | null }
