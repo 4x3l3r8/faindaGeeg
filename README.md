@@ -101,6 +101,22 @@ To enable **Reddit**, register an app at https://www.reddit.com/prefs/apps (scri
 
 The connector uses the official OAuth application-only flow (`client_credentials`, read-only). Credentials are read from the environment only and are never stored in source config.
 
+### Push ingestion (webhooks) and the Google Sheets buffer
+
+External automations (n8n, IFTTT) can **push** normalized records, and a
+**Google Sheets** source can drain a published CSV — both for official-API or
+authorized data only, no scraping. See
+[docs/integrations/inbound-ingestion.md](docs/integrations/inbound-ingestion.md)
+for the full contract, curl/n8n examples, and the Sheets buffer pattern.
+
+- `POST /api/ingestion/inbound` — accept pushed records, authenticated with the
+  `X-Webhook-Secret` header (`INGEST_WEBHOOK_SECRET`); returns `202` with
+  `{ accepted, duplicates, runIds }`, `401` on a bad/missing secret, or `503`
+  when disabled. Records are processed in the background.
+- **Google Sheets** — set `GOOGLE_SHEETS_CSV_URL` to a sheet published to the web
+  as CSV (columns `externalId,url,title,content,author,publishedAt`) and run the
+  source from the Sources page or `POST /api/ingestion/runs {"sourceName":"Google Sheets"}`.
+
 ## Problem intelligence
 
 After ingesting, build clusters of recurring problems from the **Problem Intelligence** page or via the API:
@@ -145,6 +161,7 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET/POST /ingestion/runs` — list recent runs / trigger a run (`{ sourceName?, maxRecords? }`).
 - `GET /sources` — list configured ingestion sources.
 - `GET /ingestion/connectors` — list available connectors.
+- `POST /ingestion/inbound` — accept pushed records from external automations (`X-Webhook-Secret` header; see [inbound ingestion](docs/integrations/inbound-ingestion.md)).
 - `GET /problem-clusters` — list problem clusters by demand score.
 - `GET /problem-clusters/:id` — cluster detail with evidence, members, and service ideas.
 - `POST /problem-clusters/rebuild` — run an in-process clustering pass (`{ similarityThreshold?, reembed? }`); `reembed: true` clears embeddings and clusters first.
@@ -152,6 +169,38 @@ All under `/api` (see `/docs` for the OpenAPI spec):
 - `GET /service-ideas` — list generated service ideas.
 
 Outreach is draft-only and human-approved: the system suggests an editable message and never contacts anyone.
+
+## Deploying (fly.io + Neon)
+
+The API ships with a root `Dockerfile` and a `fly.toml`, so it can run as the
+webhook receiver on [fly.io](https://fly.io) backed by
+[Neon](https://neon.tech) Postgres.
+
+1. Rename the `app` in `fly.toml` to your own globally-unique Fly app name.
+2. Use a **Neon** Postgres connection string as `DATABASE_URL` (Neon supports
+   pgvector). With `DB_AUTO_MIGRATE=true` (set in `fly.toml`) the schema is
+   provisioned on the first boot.
+3. Set secrets with `fly secrets set` (never commit them):
+
+   ```bash
+   fly secrets set \
+     DATABASE_URL=... \
+     INGEST_WEBHOOK_SECRET=... \
+     OPENROUTER_API_KEY=... \
+     OPENROUTER_MODEL=... \
+     HF_API_KEY=...
+   # optional:
+   #   GOOGLE_SHEETS_CSV_URL=...   CORS_ORIGIN=...   API_AUTH_TOKEN=...
+   ```
+
+4. Deploy:
+
+   ```bash
+   fly deploy
+   ```
+
+Non-secret configuration (`API_HOST`, `API_PORT`, `NODE_ENV`, `DB_AUTO_MIGRATE`,
+`AI_PROVIDER`, `EMBEDDINGS_PROVIDER`) lives in the `[env]` block of `fly.toml`.
 
 ## Running tests
 

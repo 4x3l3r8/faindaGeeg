@@ -2,6 +2,13 @@
 
 Living log of implementation status. Newest entries first.
 
+## 2026-11-10 — Inbound push ingestion, Google Sheets buffer, and fly.io/Neon deployment
+
+- **Inbound webhook.** `POST /api/ingestion/inbound` accepts pushed records from external automations (n8n/IFTTT), authenticated with the `X-Webhook-Secret` header (`INGEST_WEBHOOK_SECRET`). Accepts a single record, a bare array, or `{ records: [...] }` (max 50); `202 { accepted, duplicates, runIds }`, `401` on a bad secret, `503` when disabled. Dedup is per-source by `externalId` (falls back to content hash); records are persisted and processed in the background. See `docs/integrations/inbound-ingestion.md`.
+- **Google Sheets buffer source.** A `Google Sheets` connector drains a sheet published to the web as CSV (`GOOGLE_SHEETS_CSV_URL`; columns `externalId,url,title,content,author,publishedAt`) — durable buffer that survives app downtime. Listed alongside Hacker News and Reddit.
+- **Deployment.** Added a root `Dockerfile` (pnpm workspace build; runs `apps/api/dist/index.js`) and `fly.toml` (Fly app, HTTP service on 8080, non-secret `[env]`). Deploy targets fly.io + Neon Postgres; `DB_AUTO_MIGRATE=true` provisions the schema on boot.
+- **Verified locally (2026-11-10):** webhook auth/dedup/batch behavior, Google Sheets CSV parsing, and the Docker image booting, auto-migrating, and serving.
+
 ## 2026-11-10 — Embeddings made fully provider-agnostic
 
 - `ai/embeddings.ts` now selects a backend by `EMBEDDINGS_PROVIDER`: `local` (default, no key, approximate hashing), `openai` (`OPENAI_API_KEY`, optional `OPENAI_EMBEDDINGS_MODEL` / `EMBEDDING_DIM` truncation), or `huggingface` (`HF_API_KEY`, `HF_EMBEDDINGS_MODEL`). A missing cloud key falls back to local.
